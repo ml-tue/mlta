@@ -1,7 +1,9 @@
-import pandas as pd
-from sklearn.pipeline import Pipeline
-from metadatabase import MetaDataBase
 from typing import List
+
+import pandas as pd
+from metadatabase import MetaDataBase
+from sklearn.pipeline import Pipeline
+
 
 class BaseLearner:
     def __init__(self):
@@ -19,26 +21,21 @@ class BaseLearner:
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def online_phase(self, 
-                     X: pd.DataFrame,
-                     y: pd.Series, 
-                     max_time: int,
-                     metric: str,
-                     n_jobs: int) -> None:
-        """Execute the meta-learning strategy, with the previous `offline_phase` knowledge, 
+    def online_phase(self, X: pd.DataFrame, y: pd.Series, max_time: int, metric: str, n_jobs: int) -> None:
+        """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
         on the specified dataset (`new_task`) within the specified time limit (`max_time`) in seconds.
-        Should at least store the following: best solution(sklearn.pipeline.Pipline) in self._top_solution
+        Should at least store the following: best solutions (sklearn.pipeline.Pipline) in self._top_solutions
 
         Arguments
         ---------
         X: pd.DataFrame,
-            Features that are used in the meta-feature computation and pipeline training
+            Features that are used during pipeline training and possible characterization and similarity methods.
         y: pd.Series,
-            Targets that are used in the meta-feature computation and pipeline training
+            Targets that are used during pipeline training and possible characterization and similarity methods.
         max_time: int,
             The amount of time the online phase is allowed to take. Additionally, when evaluating the method,
-                the evaluation method such as LOOCV will take care of time keeping as well.
-                This specific metalearning strategy does not use the available time in its strategy.
+                the evaluation method such as LOOCV should take care of time keeping as well.
+                This parameter is provided because we allow  meta-learners altering their behavior accordingly.
         metric: str,
             metrics/ or scoring by which to select the top evaluations from the most similar task
         n_jobs: int,
@@ -47,5 +44,5 @@ class BaseLearner:
         raise NotImplementedError("Must be implemented by child class.")
 
     def get_top_solutions(self) -> Pipeline:
-        """Get the top solutions stored curing the `online_phase` """
+        """Get the top solutions stored curing the `online_phase`"""
         return self._top_solutions

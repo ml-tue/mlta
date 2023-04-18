@@ -1,15 +1,15 @@
-from metalearning.base_learner import BaseLearner
-from metadatabase import MetaDataBase
-import pandas as pd
 import os
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import cross_val_score
-from task_similarity import get_wistuba_metafeatures
-from utilities import time_limit, TimeoutException
 from collections.abc import Iterable
-import numpy as np
 
+import numpy as np
+import pandas as pd
+from metadatabase import MetaDataBase
+from metalearning.base_learner import BaseLearner
 from scipy import spatial
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+from task_similarity import get_wistuba_metafeatures
+from utilities import TimeoutException, time_limit
 
 
 # baseline meta-learning strategy simply getting the top 10 solutions using Wistuba meta-features,
@@ -17,7 +17,7 @@ from scipy import spatial
 class WistubaTop10Strategy(BaseLearner):
     def __init__(self):
         self._top_solution: Pipeline = None
-        self._best_score: float = -100000 # negative value because all metrics are actually scores (e.g. higher=better)
+        self._best_score: float = -100000  # negative value because all metrics are actually scores (e.g. higher=better)
 
     def offline_phase(self, mdbase: MetaDataBase, **kwargs) -> None:
         """Performs offline meta-feature computation for the `online_phase()` using the specified metadatabase.
@@ -45,30 +45,24 @@ class WistubaTop10Strategy(BaseLearner):
                     del meta_features[i]
 
             self._meta_features = meta_features
-        else: 
+        else:
             # compute and store meta-features
             meta_features = []
             for dataset in os.listdir(mdbase._datasets_dir):
                 dataset_id = int(dataset.split(".")[0])
-                if dataset_id in mdbase.list_datasets(by="id"): # avoid computing meta-features on new task/dataset
+                if dataset_id in mdbase.list_datasets(by="id"):  # avoid computing meta-features on new task/dataset
                     dataset_path = os.path.join(mdbase._datasets_dir, dataset)
                     feature_values, feature_names = get_wistuba_metafeatures(dataset_path)
                     meta_features.append((dataset_id, feature_values, feature_names))
-                
+
             self._meta_features = meta_features
 
-    def online_phase(self, 
-                     X: pd.DataFrame, 
-                     y: pd.Series, 
-                     max_time: int = 120, 
-                     metric: str = "neg_log_loss", 
-                     n_jobs: int = 1,
-                     verbosity: int = 1) -> None:
-        """Execute the meta-learning strategy, with the previous `offline_phase` knowledge, 
+    def online_phase(self, X: pd.DataFrame, y: pd.Series, max_time: int = 120, metric: str = "neg_log_loss", n_jobs: int = 1, verbosity: int = 1) -> None:
+        """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
         on the specified dataset (`new_task`) within the specified time limit (`max_time`) in seconds.
         Strategy: get the top 10 solutions using Wistuba meta-features, evaluating each, returning which is best.
         New task should not be the entire dataset, even for meta-features.
-        
+
         Stores the best solution (sklearn.pipeline.Pipeline) in self._top_solution
 
         Arguments
@@ -87,7 +81,7 @@ class WistubaTop10Strategy(BaseLearner):
             the `n_jobs` to use in `sklearn.model_selection.cross_val_score()`
         verbosity: int,
             if default (1), then shows information on when it timed out with `max_time`
-        
+
         """
         try:
             with time_limit(max_time):

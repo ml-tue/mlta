@@ -1,2 +1,2 @@
-from metalearning.baseline_strategy import WistubaTop10Strategy
 from evaluation import strategy_loocv
+from metalearning.baseline_strategy import WistubaTop10Strategy

@@ -1,0 +1,58 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.1.0
+  hooks:
+  - id: check-added-large-files
+  - id: check-byte-order-marker
+  - id: check-case-conflict
+  - id: check-executables-have-shebangs
+  - id: check-json
+  - id: check-shebang-scripts-are-executable
+  - id: check-merge-conflict
+  - id: check-symlinks
+  - id: check-toml
+  - id: check-vcs-permalinks
+  - id: check-xml
+  - id: check-yaml
+  - id: destroyed-symlinks
+  - id: detect-private-key
+  - id: end-of-file-fixer
+  - id: forbid-new-submodules
+  - id: mixed-line-ending
+#- repo: https://github.com/jumanjihouse/pre-commit-hooks
+#  rev: 2.1.6
+#  hooks:
+#  - id: git-check
+#  - id: markdownlint
+#- repo: https://github.com/Lucas-C/pre-commit-hooks
+#  rev: v1.1.13
+#  hooks:
+#  - id: remove-crlf
+#- repo: https://github.com/compilerla/conventional-pre-commit
+#  rev: v1.2.0
+#  hooks:
+#  - id: conventional-pre-commit
+#    stages: [commit-msg]
+#    args: [build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test, merge]
+- repo: https://github.com/pycqa/isort
+  rev: 5.12.0
+  hooks:
+  - id: isort
+    name: isort (python)
+    args: ["--python-version", "311", "--line-length", "180"]
+  - id: isort
+    name: isort (cython)
+    types: [cython]
+    args: ["--python-version", "311", "--line-length", "180"]
+  - id: isort
+    name: isort (pyi)
+    types: [pyi]
+    args: ["--python-version", "311", "--line-length", "180"]
+- repo: https://github.com/psf/black
+  rev: 23.3.0
+  hooks:
+  - id: black
+    language_version: python3.11
+    args: ["--line-length", "180"]

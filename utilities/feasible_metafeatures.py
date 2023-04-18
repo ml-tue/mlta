@@ -1,21 +1,20 @@
-from typing import List
+import _thread
 import os
+import threading
+from contextlib import contextmanager
+from typing import List
+
 import arff
 from pymfe.mfe import MFE
-from contextlib import contextmanager
-import threading
-import _thread
 
-def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc", 
-                              max_time: int = 5,
-                              meta_features: List[str] = None,
-                              verbosity: int = 1) -> List[str]:
+
+def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc", max_time: int = 5, meta_features: List[str] = None, verbosity: int = 1) -> List[str]:
     """Returns which pyMFE meta-features are feasible for all datasets stored in the metadatabase.
     That is they run within some time limit on each and everyone of the datasets.
-    
+
     Arguments
     ---------
-    metadatabase_path: str, 
+    metadatabase_path: str,
         Specifies the path having the datasets for which to compute the applicable meta features.
         Assumes each dataset to be in arff format and for the last feature to be the target.
     max_time: int,
@@ -30,19 +29,20 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
     -------
     List of strings which can be used to indicate features in pyMFE, subset of `meta-features`
     """
+
     # define some helper functions/classes
     def isNaN(num):
-        if float('-inf') < float(num) < float('inf'):
-            return False 
+        if float("-inf") < float(num) < float("inf"):
+            return False
         else:
             return True
-        
+
     class TimeoutException(Exception):
-        def __init__(self, msg=''):
+        def __init__(self, msg=""):
             self.msg = msg
 
     @contextmanager
-    def time_limit(seconds, msg=''):
+    def time_limit(seconds, msg=""):
         timer = threading.Timer(seconds, lambda: _thread.interrupt_main())
         timer.start()
         try:
@@ -52,11 +52,11 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
         finally:
             # if the action ends in specified time, timer is canceled
             timer.cancel()
-    
+
     # start actual execution
-    potentially_feasible_features = meta_features # keep track of which meta features to consider
+    potentially_feasible_features = meta_features  # keep track of which meta features to consider
     if meta_features == None:
-        groups =["complexity", "general", "info-theory", "landmarking", "model-based", "statistical"]
+        groups = ["complexity", "general", "info-theory", "landmarking", "model-based", "statistical"]
         potentially_feasible_features = list(MFE().valid_metafeatures(groups=groups))
     database_dir = os.path.join(metadatabase_path, "datasets")
 
@@ -64,8 +64,8 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
         if verbosity == 1:
             print("current dataset: {}".format(dataset))
         data = arff.load(open(os.path.join(database_dir, dataset), "r"))["data"]
-        X = [i[:-1] for i in data] # assumes last feature is the target
-        y = [i[-1] for i in data] # assumes last feature is the target
+        X = [i[:-1] for i in data]  # assumes last feature is the target
+        y = [i[-1] for i in data]  # assumes last feature is the target
 
         # try meta-features on this dataset, which are kept up to date.
         for feature in potentially_feasible_features:
@@ -82,7 +82,7 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
                 is_feasible = False
                 if verbosity == 1:
                     print("Timed out for feature: {}".format(feature))
-            if ft != None: # otherwise time-out happened and cannot perform NaN check
+            if ft != None:  # otherwise time-out happened and cannot perform NaN check
                 for feature_value in ft[1]:
                     if isNaN(feature_value):
                         is_feasible = False
@@ -90,6 +90,6 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
                             print("Feature contains a NaN value: {}".format(feature))
             if not is_feasible:
                 potentially_feasible_features.remove(feature)
-    
+
     # all infeasible features have been removed by now
     return potentially_feasible_features

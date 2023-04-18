@@ -1,9 +1,11 @@
+import math
+from collections.abc import Iterable
+from typing import List, Tuple
+
 import arff
 from pymfe.mfe import MFE
-from typing import List, Tuple
-import math
 from utilities import isNaN
-from collections.abc import Iterable
+
 
 def get_wistuba_metafeatures_from_arff(arff_file: str) -> Tuple[List, List]:
     """Get the meta-features as defined in the paper by Wistuba et al. (2016):
@@ -25,23 +27,24 @@ def get_wistuba_metafeatures_from_arff(arff_file: str) -> Tuple[List, List]:
     X = [i[:-1] for i in data]
     y = [i[-1] for i in data]
 
-    wistuba_features = ["nr_class",
-                    "nr_inst",
-                    # log_nr_inst, # needs to be added through tranformation
-                    "nr_attr",
-                    # log_nr_attr, # needs to be added through tranformation
-                    "cat_to_num",
-                    "nr_cat",
-                    "nr_num",
-                    "num_to_cat",
-                    "attr_to_inst",
-                    # "log_attr_to_inst", # needs to be added through tranformation
-                    "inst_to_attr",
-                    # "log_inst_to_attr", # needs to be added through tranformation
-                    "class_ent",
-                    "freq_class", # is computed for min, max, mean, std in summary
-                    "kurtosis", # is computed for min, max, mean, std in summary
-                    "skewness" # is computed for min, max, mean, std in summary
+    wistuba_features = [
+        "nr_class",
+        "nr_inst",
+        # log_nr_inst, # needs to be added through tranformation
+        "nr_attr",
+        # log_nr_attr, # needs to be added through tranformation
+        "cat_to_num",
+        "nr_cat",
+        "nr_num",
+        "num_to_cat",
+        "attr_to_inst",
+        # "log_attr_to_inst", # needs to be added through tranformation
+        "inst_to_attr",
+        # "log_inst_to_attr", # needs to be added through tranformation
+        "class_ent",
+        "freq_class",  # is computed for min, max, mean, std in summary
+        "kurtosis",  # is computed for min, max, mean, std in summary
+        "skewness",  # is computed for min, max, mean, std in summary
     ]
     wistuba_summary = ["min", "max", "mean", "sd"]
     wistuba_mfe = MFE(groups="all", features=wistuba_features, summary=wistuba_summary, suppress_warnings=True)
@@ -49,14 +52,14 @@ def get_wistuba_metafeatures_from_arff(arff_file: str) -> Tuple[List, List]:
     ft_untransformed = wistuba_mfe.extract(suppress_warnings=True)
     feature_names = ft_untransformed[0]
     feature_values = ft_untransformed[1]
-    
+
     # get the log transforms
     features_to_add = ["log_nr_inst", "log_nr_attr", "log_attr_to_inst", "log_inst_to_attr"]
     for feature in features_to_add:
-        index = feature_names.index(feature.split("log_")[1]) # index of feature to take log of
+        index = feature_names.index(feature.split("log_")[1])  # index of feature to take log of
         feature_names.insert(index + 1, feature)
         feature_values.insert(index + 1, math.log(feature_values[index]))
-    
+
     # set NaNs to 0, likely only happens to class/num ratios, so 0 is a sensible value.
     for i, feature_value in enumerate(feature_values):
         if isNaN(feature_value):
@@ -67,8 +70,9 @@ def get_wistuba_metafeatures_from_arff(arff_file: str) -> Tuple[List, List]:
     #     if feature in features_to_remove:
     #         del feature_values[i]
     #         del feature_names[i]
-    
+
     return feature_values, feature_names
+
 
 # overloaded function, to also work with arrays format instead of arff file
 def get_wistuba_metafeatures(X: Iterable, y) -> Tuple[List, List]:
@@ -86,23 +90,24 @@ def get_wistuba_metafeatures(X: Iterable, y) -> Tuple[List, List]:
     -------
     Tuple of lists, the first being the metafeature values, the second being the names
     """
-    wistuba_features = ["nr_class",
-                    "nr_inst",
-                    # log_nr_inst, # needs to be added through tranformation
-                    "nr_attr",
-                    # log_nr_attr, # needs to be added through tranformation
-                    "cat_to_num",
-                    "nr_cat",
-                    "nr_num",
-                    "num_to_cat",
-                    "attr_to_inst",
-                    # "log_attr_to_inst", # needs to be added through tranformation
-                    "inst_to_attr",
-                    # "log_inst_to_attr", # needs to be added through tranformation
-                    "class_ent",
-                    "freq_class", # is computed for min, max, mean, std in summary
-                    "kurtosis", # is computed for min, max, mean, std in summary
-                    "skewness" # is computed for min, max, mean, std in summary
+    wistuba_features = [
+        "nr_class",
+        "nr_inst",
+        # log_nr_inst, # needs to be added through tranformation
+        "nr_attr",
+        # log_nr_attr, # needs to be added through tranformation
+        "cat_to_num",
+        "nr_cat",
+        "nr_num",
+        "num_to_cat",
+        "attr_to_inst",
+        # "log_attr_to_inst", # needs to be added through tranformation
+        "inst_to_attr",
+        # "log_inst_to_attr", # needs to be added through tranformation
+        "class_ent",
+        "freq_class",  # is computed for min, max, mean, std in summary
+        "kurtosis",  # is computed for min, max, mean, std in summary
+        "skewness",  # is computed for min, max, mean, std in summary
     ]
     wistuba_summary = ["min", "max", "mean", "sd"]
     wistuba_mfe = MFE(groups="all", features=wistuba_features, summary=wistuba_summary, suppress_warnings=True)
@@ -110,17 +115,17 @@ def get_wistuba_metafeatures(X: Iterable, y) -> Tuple[List, List]:
     ft_untransformed = wistuba_mfe.extract(suppress_warnings=True)
     feature_names = ft_untransformed[0]
     feature_values = ft_untransformed[1]
-    
+
     # get the log transforms
     features_to_add = ["log_nr_inst", "log_nr_attr", "log_attr_to_inst", "log_inst_to_attr"]
     for feature in features_to_add:
-        index = feature_names.index(feature.split("log_")[1]) # index of feature to take log of
+        index = feature_names.index(feature.split("log_")[1])  # index of feature to take log of
         feature_names.insert(index + 1, feature)
         feature_values.insert(index + 1, math.log(feature_values[index]))
-    
+
     # set NaNs to 0, likely only happens to class/num ratios, so 0 is a sensible value.
     for i, feature_value in enumerate(feature_values):
         if isNaN(feature_value):
             feature_values[i] = 0
-    
+
     return feature_values, feature_names

@@ -1,13 +1,15 @@
-from contextlib import contextmanager
-import threading
 import _thread
+import threading
+from contextlib import contextmanager
+
 
 class TimeoutException(Exception):
-    def __init__(self, msg=''):
+    def __init__(self, msg=""):
         self.msg = msg
 
+
 @contextmanager
-def time_limit(seconds, msg=''):
+def time_limit(seconds, msg=""):
     timer = threading.Timer(seconds, lambda: _thread.interrupt_main())
     timer.start()
     try:

@@ -1,21 +1,25 @@
-from gama.data_loading import X_y_from_file
-from metalearning.base_learner import BaseStrategy
-from metadatabase import MetaDataBase
-from sklearn.metrics import log_loss
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from typing import List, Tuple
 import os
-import numpy as np
+from typing import List, Tuple
 
-def strategy_loocv(mdbase: MetaDataBase,
-                   metalearning_strategy: BaseStrategy,
-                   max_time: int,
-                   metric: str = "neg_log_loss", 
-                   validation_strategy: str = "holdout", 
-                   dataset_characterization: List[Tuple[int, List[int | float], List[str]]] = None,
-                   n_jobs: int = 1,
-                   verbosity: int = 1) -> List[Tuple[int, float]]:
+import numpy as np
+from gama.data_loading import X_y_from_file
+from metadatabase import MetaDataBase
+from metalearning.base_learner import BaseStrategy
+from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+
+def strategy_loocv(
+    mdbase: MetaDataBase,
+    metalearning_strategy: BaseStrategy,
+    max_time: int,
+    metric: str = "neg_log_loss",
+    validation_strategy: str = "holdout",
+    dataset_characterization: List[Tuple[int, List[int | float], List[str]]] = None,
+    n_jobs: int = 1,
+    verbosity: int = 1,
+) -> List[Tuple[int, float]]:
     """Performs leave-one-out-cross-validation (LOOCV) on the metadatabase to estimate the performance of the meta-learning strategy,
         allowing it `max_time` seconds and evaluating on the `metric`, while performing the `validation` strategy per dataset.
 
@@ -30,9 +34,9 @@ def strategy_loocv(mdbase: MetaDataBase,
     metric: str,
         specify the metric to perform the LOOCV with
         Default is neg_log_loss, TODO implement other options
-    validation_strategy: str, 
+    validation_strategy: str,
         Validation strategy used within LOOCV on a single dataset.
-        Default is holdout with 80/20 train-test split. 
+        Default is holdout with 80/20 train-test split.
          TODO implement other options
     dataset_characterization: List[Tuple[int, List[int | float], List[str]]]
         A list of tuples, where each tuple represents a dataset characterization.
@@ -48,15 +52,14 @@ def strategy_loocv(mdbase: MetaDataBase,
     -------
     List of (dataset_id, performance) tuples for each dataset using LOOCV with the specified metric
     If meta-learning strategy does not provide a solution within `max_time`, then performance is None"""
-    
+
     # stores the to-be-created output
     dataset_evaluations = []
 
     dataset_ids = mdbase.list_datasets(by="id")
-    for did in dataset_ids: # leave one dataset out
-
+    for did in dataset_ids:  # leave one dataset out
         if validation_strategy == "holdout":
-            if dataset_characterization != None: # perform online phase with suitable characterizations
+            if dataset_characterization != None:  # perform online phase with suitable characterizations
                 selected_characterizations = []
                 for characterization in dataset_characterization:
                     if characterization[0] != did:
@@ -76,7 +79,7 @@ def strategy_loocv(mdbase: MetaDataBase,
                 dataset_evaluations.append((did, None))
             else:
                 top_solution.fit(X_train, y_train)
-                performance: float = None # stores performance according to metric
+                performance: float = None  # stores performance according to metric
                 if metric == "neg_log_loss":
                     y_pred = top_solution.predict_proba(X_test)
                     labels = np.unique(LabelEncoder().fit_transform(y))
@@ -86,14 +89,14 @@ def strategy_loocv(mdbase: MetaDataBase,
         # if k-fold cv:
         # get relevant dataset_characterizations
 
-            # for each fold 
-                # perform the offline phase on the subset of the mdbase
+        # for each fold
+        # perform the offline phase on the subset of the mdbase
 
-                # perform the online phase on the subset of the mdbase within max_time
+        # perform the online phase on the subset of the mdbase within max_time
 
-                # get the top solution
+        # get the top solution
 
-            # avg out the scores
+        # avg out the scores
 
         if verbosity == 1:
             print("Done with dataset with id: {}".format(did))
@@ -102,5 +105,3 @@ def strategy_loocv(mdbase: MetaDataBase,
         metalearning_strategy._best_score = -100000
 
     return dataset_evaluations
-
-
