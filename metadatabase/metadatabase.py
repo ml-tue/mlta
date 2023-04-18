@@ -15,8 +15,9 @@ from gama.search_methods.async_ea import AsyncEA
 from gama.search_methods.base_search import BaseSearch
 from gama.utilities.export import format_import, individual_to_python
 from gama.utilities.preprocessing import basic_encoding, basic_pipeline_extension
-from metadatabase.metadatalookuptable import MetaDataLookupTable
 from sklearn.pipeline import Pipeline
+
+from metadatabase.metadatalookuptable import MetaDataLookupTable
 from utilities import hash_pipe_id_to_dir
 
 

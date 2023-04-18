@@ -1,8 +1,9 @@
 from typing import List
 
 import pandas as pd
-from metadatabase import MetaDataBase
 from sklearn.pipeline import Pipeline
+
+from metadatabase import MetaDataBase
 
 
 class BaseLearner:

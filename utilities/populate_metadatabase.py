@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import List
 
 from gama.search_methods import AsyncEA, AsynchronousSuccessiveHalving, RandomSearch
-from metadatabase import MetaDataBase
 from openml.datasets import get_dataset
+
+from metadatabase import MetaDataBase
 
 
 def populate_mdbase_gama(

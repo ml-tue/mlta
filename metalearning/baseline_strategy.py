@@ -3,11 +3,12 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-from metadatabase import MetaDataBase
-from metalearning.base_learner import BaseLearner
 from scipy import spatial
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
+
+from metadatabase import MetaDataBase
+from metalearning.base_learner import BaseLearner
 from task_similarity import get_wistuba_metafeatures
 from utilities import TimeoutException, time_limit
 

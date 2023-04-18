@@ -3,11 +3,12 @@ from typing import List, Tuple
 
 import numpy as np
 from gama.data_loading import X_y_from_file
-from metadatabase import MetaDataBase
-from metalearning.base_learner import BaseStrategy
 from sklearn.metrics import log_loss
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+
+from metadatabase import MetaDataBase
+from metalearning.base_learner import BaseStrategy
 
 
 def strategy_loocv(
