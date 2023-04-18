@@ -8,7 +8,7 @@ from metadatabase import MetaDataBase
 
 class BaseLearner:
     def __init__(self):
-        self._top_solutions: List[Pipeline] = None
+        self._top_configurations: List[Pipeline] = None
 
     def offline_phase(self, mdbase: MetaDataBase, **kwargs) -> None:
         """Performs offline computation for the `online_phase()` using the specified metadatabase.
@@ -25,7 +25,7 @@ class BaseLearner:
     def online_phase(self, X: pd.DataFrame, y: pd.Series, max_time: int, metric: str, n_jobs: int) -> None:
         """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
         on the specified dataset (`new_task`) within the specified time limit (`max_time`) in seconds.
-        Should at least store the following: best solutions (sklearn.pipeline.Pipline) in self._top_solutions
+        Should at least store the following: best solutions (sklearn.pipeline.Pipline) in self._top_configurations
 
         Arguments
         ---------
@@ -38,12 +38,13 @@ class BaseLearner:
                 the evaluation method such as LOOCV should take care of time keeping as well.
                 This parameter is provided because we allow  meta-learners altering their behavior accordingly.
         metric: str,
-            metrics/ or scoring by which to select the top evaluations from the most similar task
+            metrics/scoring on which configurations are assessed
         n_jobs: int,
-            the `n_jobs` to use in `sklearn.model_selection.cross_val_score()`
+            the `n_jobs` the online phase can use in its computations, especially important for meta-learners
+            that evaluate models because they could evaluate a lot more or less depending on this value.
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def get_top_solutions(self) -> Pipeline:
+    def get_top_configurations(self) -> Pipeline:
         """Get the top solutions stored curing the `online_phase`"""
-        return self._top_solutions
+        return self._top_configurations

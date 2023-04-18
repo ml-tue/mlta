@@ -1,0 +1,1 @@
+from configuration_characterization.base_configuration_characterization import BaseConfigurationCharacterization
