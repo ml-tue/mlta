@@ -12,3 +12,4 @@ dataset_characterization/__pycache__
 configuration_characterization/__pycache__
 utilities/__pycache__
 metadatabase_openml18cc
+.vscode
