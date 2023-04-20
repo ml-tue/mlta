@@ -1,10 +1,9 @@
-from metadatabase import MetaDataBase
-from metalearning.base_learner import BaseLearner
+from metalearners.base_learner import BaseLearner
 
 
-class BaseCharacterizationLearner:
+class BaseAgnosticLearner(BaseLearner):
     def __init__(self):
-        super.__init__()
+        pass
 
     def online_phase(self, max_time: int, metric: str, n_jobs: int) -> None:
         """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,

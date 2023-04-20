@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from sklearn.pipeline import Pipeline
@@ -8,7 +8,7 @@ from metadatabase import MetaDataBase
 
 class BaseLearner:
     def __init__(self):
-        self._top_configurations: List[Pipeline] = None
+        self._top_configurations: Optional[List[Pipeline]] = None  # if applicable: high-to-low ranked on expected performance
 
     def offline_phase(self, mdbase: MetaDataBase, **kwargs) -> None:
         """Performs offline computation for the `online_phase()` using the specified metadatabase.
@@ -45,6 +45,8 @@ class BaseLearner:
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def get_top_configurations(self) -> Pipeline:
+    def get_top_configurations(self) -> List[Pipeline]:
         """Get the top solutions stored curing the `online_phase`"""
+        if self._top_configurations is None:
+            raise Warning("Meta-Learner has no configurations to return")
         return self._top_configurations

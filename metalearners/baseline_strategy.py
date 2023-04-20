@@ -4,12 +4,13 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 from scipy import spatial
-from similarity_measures import get_wistuba_metafeatures
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 
+from dataset_characterization import get_wistuba_metafeatures
+from dataset_characterization.meta_features import get_wistuba_metafeatures_from_arff
 from metadatabase import MetaDataBase
-from metalearning.base_learner import BaseLearner
+from metalearners.base_learner import BaseLearner
 from utilities import TimeoutException, time_limit
 
 
@@ -17,7 +18,6 @@ from utilities import TimeoutException, time_limit
 # evaluating each, returning which is best.
 class WistubaTop10Strategy(BaseLearner):
     def __init__(self):
-        self._top_solution: Pipeline = None
         self._best_score: float = -100000  # negative value because all metrics are actually scores (e.g. higher=better)
 
     def offline_phase(self, mdbase: MetaDataBase, **kwargs) -> None:
@@ -52,8 +52,8 @@ class WistubaTop10Strategy(BaseLearner):
             for dataset in os.listdir(mdbase._datasets_dir):
                 dataset_id = int(dataset.split(".")[0])
                 if dataset_id in mdbase.list_datasets(by="id"):  # avoid computing meta-features on new task/dataset
-                    dataset_path = os.path.join(mdbase._datasets_dir, dataset)
-                    feature_values, feature_names = get_wistuba_metafeatures(dataset_path)
+                    dataset_path = os.path.join(str(mdbase._datasets_dir), dataset)
+                    feature_values, feature_names = get_wistuba_metafeatures_from_arff(dataset_path)
                     meta_features.append((dataset_id, feature_values, feature_names))
 
             self._meta_features = meta_features
@@ -105,10 +105,11 @@ class WistubaTop10Strategy(BaseLearner):
                     # we should expect that not all pipelines may work,
                     # for instance some feature selectors may remove all features
                     # therefore try fitting it, if it does not work, then set score very low
+                    # TODO: adapt for possibly multiple top solutions, so a ranked list of pipelines.
                     try:
                         score = np.mean(cross_val_score(pipe, X, y, scoring=metric, n_jobs=n_jobs))
                         if score > self._best_score:
-                            self._best_score = score
+                            self._best_score = float(score)
                             self._top_solution = pipe
                     except ValueError as e:
                         if verbosity == 1:

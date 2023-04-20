@@ -2,26 +2,26 @@ import _thread
 import os
 import threading
 from contextlib import contextmanager
-from typing import List
+from typing import List, Optional
 
 import arff
 from pymfe.mfe import MFE
 
 
-def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc", max_time: int = 5, meta_features: List[str] = None, verbosity: int = 1) -> List[str]:
+def get_feasible_metafeatures(meta_features: Optional[List[str]], metadatabase_path: str = "metadatabase_openml18cc", max_time: int = 5, verbosity: int = 1) -> List[str]:
     """Returns which pyMFE meta-features are feasible for all datasets stored in the metadatabase.
     That is they run within some time limit on each and everyone of the datasets.
 
     Arguments
     ---------
+    meta_features: List[str],
+        List of meta-features to try out. If default(`None`), then try out all features of types:
+            "complexity", "general", "info-theory", "landmarking", "model-based", "statistical"
     metadatabase_path: str,
         Specifies the path having the datasets for which to compute the applicable meta features.
         Assumes each dataset to be in arff format and for the last feature to be the target.
     max_time: int,
         Maximum time in seconds which a meta feature is allowed on any of the datasets
-    meta_features: List[str],
-        List of meta-features to try out. If default(`None`), then try out all features of types:
-            "complexity", "general", "info-theory", "landmarking", "model-based", "statistical"
     verbosity: int,
         if set to 1 shows which features are removed and why.
 
@@ -68,6 +68,8 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
         y = [i[-1] for i in data]  # assumes last feature is the target
 
         # try meta-features on this dataset, which are kept up to date.
+        if potentially_feasible_features is None:
+            raise Warning("meta-features to try out it is empty, couldn't compute pyMFE meta-features")
         for feature in potentially_feasible_features:
             ft = None
             is_feasible = True
@@ -92,4 +94,7 @@ def get_feasible_metafeatures(metadatabase_path: str = "metadatabase_openml18cc"
                 potentially_feasible_features.remove(feature)
 
     # all infeasible features have been removed by now
-    return potentially_feasible_features
+    if potentially_feasible_features is not None:
+        return potentially_feasible_features
+    else:
+        return [""]

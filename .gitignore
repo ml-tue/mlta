@@ -6,7 +6,7 @@ test.py
 wistuba_mf.pkl
 evaluations/__pycache__
 metadatabase/__pycache__
-metalearning/__pycache__
+metalearners/__pycache__
 dataset_similarity/__pycache__
 dataset_characterization/__pycache__
 configuration_characterization/__pycache__

@@ -1,26 +1,19 @@
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple
 
-import numpy as np
-import pandas as pd
-from sklearn.pipeline import Pipeline
-
-from configuration_characterization import BaseConfigurationCharacterization
-from dataset_characterization import BaseDatasetCharacterization
 from metadatabase import MetaDataBase
-from metalearning import BaseLearner
+from metalearners.base_learner import BaseLearner
 
 
 class BaseCharacterizationLearner(BaseLearner):
     def __init__(self):
-        super.__init__()
-        self._dataset_characterizations: List[Tuple[int, List[int | float]]] = None
-        self._config_characterizations: List[Tuple[int, List[int | float | str]]] = None
+        self._dataset_characterizations: Optional[List[Tuple[int, List[int | float]]]] = None
+        self._config_characterizations: Optional[List[Tuple[int, List[int | float | str]]]] = None
 
     def offline_phase(
         self,
         mdbase: MetaDataBase,
-        dataset_characterization: Union[List[Tuple[int, List[int | float]]], BaseDatasetCharacterization] = None,
-        config_characterization: Union[List[Tuple[int, List[int | float | str]]], BaseConfigurationCharacterization] = None,
+        dataset_characterization: Optional[List[Tuple[int, List[int | float]]]],
+        config_characterization: Optional[List[Tuple[int, List[int | float | str]]]],
     ) -> None:
         """Performs offline computation before the `online_phase()` using the specified metadatabase.
         After this method at least:
@@ -32,14 +25,14 @@ class BaseCharacterizationLearner(BaseLearner):
         ---------
         mdbase: MetaDataBase,
             metadatabase of prior experiences, as created in metadatabase.MetaDataBase class.
-        dataset_characterization: List[Tuple[int, List[int | float]]] or BaseDatasetCharacterization,
-            If type is BaseDatasetCharacterization, then the specified Characterization measure is computed.
+        dataset_characterization: List[Tuple[int, List[int | float]]] or None,
+            If type is None, then the Characterizations should be computed within this function.
             Otherwise, use given pre-computed dataset characterizations instead of computing them. Should be:
                 A list of tuples, where each tuple represents a dataset characterization.
                 The first element in the tuple refers to the dataset_id in `mdbase`,
                 The second element is the purely numeric vector representing the dataset.
-        config_characterization: List[Tuple[int, List[int | float | str]] or BaseConfigurationCharacterization,
-            If type is BaseConfigurationCharacterization, then specified characterization method is computed on `mdbase`
+        config_characterization: List[Tuple[int, List[int | float | str]] or None,
+            If type is None, then specified configuration characterization method should be computed on `mdbase`
             Otherwise, use given pre-computed config characterizations instead of computing them. Should be:
                 A list of tuples, where each tuple represents a configuraiton characterization.
                 The first element in the tuple refers to the pipeline_id in `mdbase`,

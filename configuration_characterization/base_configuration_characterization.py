@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from sklearn.pipeline import Pipeline
 
@@ -9,7 +9,7 @@ class BaseConfigurationCharacterization:
     def __init__(self):
         pass
 
-    def compute(pipe: Pipeline) -> List[int | float | str]:
+    def compute(self, pipe: Pipeline) -> List[int | float | str] | NotImplementedError:
         """Computes and returns a characterization for a configuration for the specified Pipeline.
 
         Arguments
@@ -25,7 +25,7 @@ class BaseConfigurationCharacterization:
         """
         return NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def compute_mdbase_characterizations(mdbase: MetaDataBase) -> List[Tuple[int, List[int | float | str]]]:
+    def compute_mdbase_characterizations(self, mdbase: MetaDataBase) -> List[Tuple[int, List[int | float | str]]] | NotImplementedError:
         """Computes and returns the characterizations for all configuration (pipes) in the specified metadatabase.
 
         Arguments

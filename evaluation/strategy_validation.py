@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from gama.data_loading import X_y_from_file
@@ -8,21 +8,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 from metadatabase import MetaDataBase
-from metalearning.base_learner import BaseStrategy
+from metalearners import BaseLearner
 
 
 def strategy_loocv(
     mdbase: MetaDataBase,
-    metalearning_strategy: BaseStrategy,
+    metalearning_strategy: BaseLearner,
     max_time: int,
+    dataset_characterization: Optional[List[Tuple[int, List[int | float], List[str]]]],
     metric: str = "neg_log_loss",
     validation_strategy: str = "holdout",
-    dataset_characterization: List[Tuple[int, List[int | float], List[str]]] = None,
     n_jobs: int = 1,
     verbosity: int = 1,
 ) -> List[Tuple[int, float]]:
     """Performs leave-one-out-cross-validation (LOOCV) on the metadatabase to estimate the performance of the meta-learning strategy,
-        allowing it `max_time` seconds and evaluating on the `metric`, while performing the `validation` strategy per dataset.
+        allowing it `max_time` seconds and evaluating on the `metric`, while performing the `validation_strategy` per dataset.
 
     Arguments
     ---------
@@ -70,21 +70,22 @@ def strategy_loocv(
                 metalearning_strategy.offline_phase(mdbase=mdbase)
 
             # perform online phase
-            X, y = X_y_from_file(os.path.join(mdbase._datasets_dir, "{}.arff".format(did)))
+            X, y = X_y_from_file(os.path.join(str(mdbase._datasets_dir), "{}.arff".format(did)))
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-            metalearning_strategy.online_phase(X_train, y_train, max_time=max_time, n_jobs=n_jobs)
+            metalearning_strategy.online_phase(X_train, y_train, max_time=max_time, metric="neg_log_loss", n_jobs=n_jobs)
 
             # if possible, evaluate top solution
-            top_solution = metalearning_strategy.get_top_solution()
+            # TODO: decide how to evaluate when there are multiple solutions
+            top_solution = metalearning_strategy.get_top_configurations()[0]
             if top_solution is None:
                 dataset_evaluations.append((did, None))
             else:
                 top_solution.fit(X_train, y_train)
-                performance: float = None  # stores performance according to metric
+                performance: float = -np.inf  # stores performance according to metric
                 if metric == "neg_log_loss":
                     y_pred = top_solution.predict_proba(X_test)
                     labels = np.unique(LabelEncoder().fit_transform(y))
-                    performance = -1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels)
+                    performance = float(-1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels))
                 dataset_evaluations.append((did, performance))
 
         # if k-fold cv:
@@ -102,7 +103,6 @@ def strategy_loocv(
         if verbosity == 1:
             print("Done with dataset with id: {}".format(did))
         # reset the meta-learning strategy top solution and best score for next dataset
-        metalearning_strategy._top_solution = None
-        metalearning_strategy._best_score = -100000
+        metalearning_strategy._top_configurations = None
 
     return dataset_evaluations

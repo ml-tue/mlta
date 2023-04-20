@@ -1,4 +1,3 @@
-import datetime
 import importlib
 import os
 import shutil
@@ -7,7 +6,6 @@ from typing import List, Optional, Tuple
 import arff
 import numpy as np
 import pandas as pd
-import sklearn
 from gama import GamaClassifier
 from gama.data_formatting import format_x_y
 from gama.postprocessing import EnsemblePostProcessing
@@ -23,7 +21,7 @@ from utilities import hash_pipe_id_to_dir
 
 # the metadatabase consist of datasets that were used to train on, the solutions on these datasets, and the associated scpre, and the corresponding metric
 class MetaDataBase:
-    def __init__(self, path: str = None):
+    def __init__(self, path: str = ""):
         """Initializes the MetaDataBase. `path` is optional, if set then the metadatabase is loaded from path
         path should contain 4 folders: 'pipelines', 'datasets', 'lookup_tables', 'logs' Additionally it should contain 'metadatabase.csv'"""
 
@@ -32,10 +30,10 @@ class MetaDataBase:
         self._datasets_dir = None
         self._tables_dir = None
         self._logs_dir = None
-        self._md_table: MetaDataLookupTable = None  # lookuptable for pipelines and datasets
-        self._mdbase: pd.DataFrame = None  # actually stores the solutions with their scores on datasets
+        self._md_table: MetaDataLookupTable  # lookuptable for pipelines and datasets
+        self._mdbase: pd.DataFrame  # actually stores the solutions with their scores on datasets
 
-        if path != None:
+        if path != "":
             self._mdbase_path = os.path.join(path, "metadatabase.csv")
             self._pipelines_dir = os.path.join(path, "pipelines")
             self._datasets_dir = os.path.join(path, "datasets")
@@ -94,7 +92,7 @@ class MetaDataBase:
         dataset_path: str,
         dataset_name: str,
         max_models_to_keep: int = 1000000,
-        logs_name: str = None,
+        logs_name: str = "",
         scoring: str = "neg_log_loss",
         regularize_length: bool = True,
         max_pipeline_length: Optional[int] = None,
@@ -164,7 +162,7 @@ class MetaDataBase:
         """
         if self._mdbase_path == None or self._pipelines_dir == None or self._datasets_dir == None or self._tables_dir == None:
             raise ValueError("No csv files associated to the metadatabase. \nFirst create a metadatabase. \nAborted GAMA run.")
-        if os.path.exists(os.path.join(self._logs_dir, logs_name)):
+        if os.path.exists(os.path.join(str(self._logs_dir), logs_name)):
             raise ValueError("This log file name `logs_name` already exists. \nAborted GAMA run.")
 
         # instantiate GAMA, start training, keep track of models in `automl` object.
@@ -177,7 +175,7 @@ class MetaDataBase:
             random_state=random_state,
             n_jobs=n_jobs,
             max_memory_mb=max_memory_mb,
-            output_directory=os.path.join(self._logs_dir, logs_name),
+            output_directory=os.path.join(str(self._logs_dir), logs_name),
             search=search,
             post_processing=EnsemblePostProcessing(time_fraction=0, max_models=max_models_to_keep),  # dont fit ensemble
             verbosity=0,
@@ -253,7 +251,7 @@ class MetaDataBase:
             Another option is "arrays", which returns the dataset as a tuple: (X, y),
                 Assumes the last column of the arff is the target.
         """
-        dataset_path = os.path.join(self._datasets_dir, "{}.arff".format(dataset_id))
+        dataset_path = os.path.join(str(self._datasets_dir), "{}.arff".format(dataset_id))
         if not os.path.exists(dataset_path):
             raise ValueError("Dataset with id: {} not present in the metadatabase".format(dataset_id))
 
@@ -278,17 +276,17 @@ class MetaDataBase:
         """
         return self._md_table.list_pipelines(by)
 
-    def get_sklearn_pipeline(self, pipeline_id: int, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame, is_classification: bool) -> sklearn.pipeline.Pipeline:
+    def get_sklearn_pipeline(self, pipeline_id: int, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame | pd.Series, is_classification: bool) -> Pipeline:
         """Returns a sklearn.pipeline.Pipeline from the metadatabase representing `pipeline_id`
         Additionally, it loads the imports that are necessary for executing the pipeline"""
         # prepare loading the pipeline without preprocessing
         dir_id = str(hash_pipe_id_to_dir(pipeline_id))
-        pipeline_path = os.path.join(self._pipelines_dir, dir_id, "pipeline_{}.py".format(pipeline_id))
+        pipeline_path = os.path.join(str(self._pipelines_dir), dir_id, "pipeline_{}.py".format(pipeline_id))
         if not os.path.exists(pipeline_path):
             raise ValueError("Pipeline with id: {} is not present in the metadatabase".format(pipeline_id))
         module_name = "pipefile_{}".format(id)
-        spec = importlib.util.spec_from_file_location(module_name, pipeline_path)
-        module = importlib.util.module_from_spec(spec)
+        spec = importlib.util.spec_from_file_location(module_name, pipeline_path)  # type: ignore
+        module = importlib.util.module_from_spec(spec)  # type: ignore
         spec.loader.exec_module(module)
 
         pipe_wo_prepro = module.pipeline
@@ -303,7 +301,7 @@ class MetaDataBase:
         imports += [format_import(step) for _, step in pipeline.steps]
         [exec(imp) for imp in imports]
 
-    def _get_preprocessing_steps(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame, is_classification: bool) -> list:
+    def _get_preprocessing_steps(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame | pd.Series, is_classification: bool) -> list:
         """Returns the preprocessing steps (encoding and imputation) for the data"""
         X, y_ = format_x_y(X, y)
         X_, basic_encoding_pipeline = basic_encoding(X, is_classification)
@@ -313,11 +311,11 @@ class MetaDataBase:
 
     def get_df(
         self,
-        datasets: List[str] | List[int] = None,
-        pipelines: List[str] | List[int] = None,
-        logs_name: List[str] = None,
-        metrics: List[str] = None,
-        top_solutions: Tuple[int, str] = None,
+        datasets: Optional[List[str] | List[int]] = None,
+        pipelines: Optional[List[str] | List[int]] = None,
+        logs_name: Optional[List[str]] = None,
+        metrics: Optional[List[str]] = None,
+        top_solutions: Optional[Tuple[int, str]] = None,
         avg_equivalent: bool = False,
     ) -> pd.DataFrame:
         """Returns a copy of the metadatabase records as a pandas.Dataframe object.
@@ -359,14 +357,14 @@ class MetaDataBase:
 
         # select datasets
         if isinstance(datasets, list) and all(isinstance(dataset, str) for dataset in datasets):
-            dataset_ids = [self._md_table.get_dataset_id(dataset) for dataset in datasets]
+            dataset_ids = [self._md_table.get_dataset_id(str(dataset)) for dataset in datasets]
             mdbase = mdbase[mdbase["dataset_id"].isin(dataset_ids)]
         if isinstance(datasets, list) and all(isinstance(dataset, int) for dataset in datasets):
             mdbase = mdbase[mdbase["dataset_id"].isin(datasets)]
 
         # select pipelines
         if isinstance(pipelines, list) and all(isinstance(pipe, str) for pipe in pipelines):
-            pipeline_ids = [self._md_table.get_pipeline_id(pipe) for pipe in pipelines]
+            pipeline_ids = [self._md_table.get_pipeline_id(str(pipe)) for pipe in pipelines]
             mdbase = mdbase[mdbase["pipeline_id"].isin(pipeline_ids)]
         if isinstance(pipelines, list) and all(isinstance(pipe, int) for pipe in pipelines):
             mdbase = mdbase[mdbase["pipeline_id"].isin(pipelines)]

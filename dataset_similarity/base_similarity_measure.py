@@ -9,7 +9,7 @@ class BaseSimilarityMeasure:
     def __init__(self):
         pass
 
-    def compute(X1: pd.DataFrame, y1: Optional[pd.Series], X2: pd.DataFrame, y2: Optional[pd.Series]) -> float:
+    def compute(self, X1: pd.DataFrame, y1: Optional[pd.Series], X2: pd.DataFrame, y2: Optional[pd.Series]) -> float | NotImplementedError:
         """Computes and returns a pair-wise similarity-value representing the (dis)similarity between the datasets.
 
         Arguments
@@ -32,7 +32,9 @@ class BaseSimilarityMeasure:
         """
         return NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def get_datasets(X: pd.DataFrame, y: Optional[pd.Series], mdbase: MetaDataBase, n: int, by: str = "similarity") -> List[Tuple[int, List[int | float]]]:
+    def get_datasets(
+        self, X: pd.DataFrame, y: Optional[pd.Series], mdbase: MetaDataBase, n: int, by: str = "similarity"
+    ) -> List[Tuple[int, List[int | float]]] | NotImplementedError:
         """Returns mdbase's dataset_ids by their (dis)similarity to specified dataset.
 
         Arguments

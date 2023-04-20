@@ -6,7 +6,7 @@ import pandas as pd
 
 
 class MetaDataLookupTable:
-    def __init__(self, path: str = None):
+    def __init__(self, path: str = ""):
         """'path' is optional to initialize the lookuptable from an existing metadatabase.
         Should point to folder with three tables:
             'lookup_table_pipelines.csv' with columns 'pipeline' and 'pipeline_id'
@@ -55,7 +55,7 @@ class MetaDataLookupTable:
             return list(self._pipeline_str_to_id.keys())
         elif by == "id":
             return list(self._pipeline_str_to_id.values())
-        elif by == "both":
+        else:  # by == "both":
             return list(zip(list(self._pipeline_str_to_id.keys()), list(self._pipeline_str_to_id.values())))
 
     def add_dataset(self, dataset_str: str):
@@ -77,7 +77,7 @@ class MetaDataLookupTable:
             return list(self._dataset_to_id.keys())
         elif by == "id":
             return list(self._dataset_to_id.values())
-        elif by == "both":
+        else:  # by == "both":
             return list(zip(list(self._dataset_to_id.keys()), list(self._dataset_to_id.values())))
 
     def to_csvs(self, path: str = "") -> None:

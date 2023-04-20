@@ -9,7 +9,7 @@ class BaseDatasetCharacterization:
     def __init__(self):
         pass
 
-    def compute(X: pd.DataFrame, y: Optional[pd.Series]) -> List[int | float]:
+    def compute(self, X: pd.DataFrame, y: Optional[pd.Series]) -> List[int | float] | NotImplementedError:
         """Computes and returns a characterization for the dataset given by X and y.
 
         Arguments
@@ -27,7 +27,7 @@ class BaseDatasetCharacterization:
         """
         return NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def compute_mdbase_characterizations(mdbase: MetaDataBase) -> List[Tuple[int, List[int | float]]]:
+    def compute_mdbase_characterizations(self, mdbase: MetaDataBase) -> List[Tuple[int, List[int | float]]] | NotImplementedError:
         """Computes and returns the characterizations for all datasets in the specified metadatabase.
 
         Arguments

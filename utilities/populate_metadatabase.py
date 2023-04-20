@@ -48,7 +48,7 @@ def populate_mdbase_gama(
             mdbase = MetaDataBase(mdb_path)
             logs_name = openml_dataset.name + "_{}".format(search_method_name)
             mdbase.add_gama_run(
-                dataset_path=arff_data_path,
+                dataset_path=str(arff_data_path),
                 dataset_name=openml_dataset.name,
                 scoring=score,
                 logs_name=logs_name,
@@ -65,7 +65,7 @@ def populate_mdbase_gama(
             mdbase = MetaDataBase(mdb_path)
             logs_name = openml_dataset.name + "_{}".format(search_method_name)
             mdbase.add_gama_run(
-                dataset_path=arff_data_path,
+                dataset_path=str(arff_data_path),
                 dataset_name=openml_dataset.name,
                 scoring=score,
                 logs_name=logs_name,
@@ -82,7 +82,7 @@ def populate_mdbase_gama(
             mdbase = MetaDataBase(mdb_path)
             logs_name = openml_dataset.name + "_{}".format(search_method_name)
             mdbase.add_gama_run(
-                dataset_path=arff_data_path,
+                dataset_path=str(arff_data_path),
                 dataset_name=openml_dataset.name,
                 scoring=score,
                 logs_name=logs_name,
