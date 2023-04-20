@@ -265,7 +265,7 @@ class MetaDataBase:
             attribute_names = [attribute[0] for attribute in attributes_info[:-1]]
             class_name = attributes_info[-1][0]
             df_X = pd.DataFrame.from_records(data=X, columns=attribute_names)
-            df_y = pd.DataFrame.from_records(data=y, columns=[class_name])
+            df_y = pd.DataFrame(y, columns=[class_name])
             return df_X, df_y
         elif type == "arff_path":
             return dataset_path

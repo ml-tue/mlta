@@ -9,7 +9,7 @@ class BaseDatasetCharacterization:
     def __init__(self):
         pass
 
-    def compute(self, X: pd.DataFrame, y: Optional[pd.Series]) -> List[int | float] | NotImplementedError:
+    def compute(self, X: pd.DataFrame, y: Optional[pd.DataFrame]) -> List[int | float] | NotImplementedError:
         """Computes and returns a characterization for the dataset given by X and y.
 
         Arguments
