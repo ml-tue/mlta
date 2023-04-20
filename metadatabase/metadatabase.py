@@ -241,23 +241,35 @@ class MetaDataBase:
         """
         return self._md_table.list_datasets(by)
 
-    def get_dataset(self, dataset_id: int, type: str = "arrays"):
+    def get_dataset(self, dataset_id: int, type: str = "dataframe") -> str | Tuple[List, List] | Tuple[pd.DataFrame, pd.DataFrame]:
         """Returns dataset with `dataset_id` from metadatabase, assuming the last column is the target.
 
         Arguments
         ---------
         type: str,
-            How the dataset is returned. Default is arff_path, which points to the arff file on the system.
+            How the dataset is returned. Assumes the last column of the arff is the target. Options are:
+            Default option is "dataframe", which returns a tuple of pd.Dataframes for features and outcome.
             Another option is "arrays", which returns the dataset as a tuple: (X, y),
-                Assumes the last column of the arff is the target.
+            Another option is "arff_path", which points to the arff file on the system.
         """
         dataset_path = os.path.join(str(self._datasets_dir), "{}.arff".format(dataset_id))
         if not os.path.exists(dataset_path):
             raise ValueError("Dataset with id: {} not present in the metadatabase".format(dataset_id))
 
-        if type == "arff_path":
+        if type == "dataframe":
+            data = arff.load(open(str(dataset_path), "r"))["data"]
+            # select the last value to be the target
+            X = [i[:-1] for i in data]
+            y = [i[-1] for i in data]
+            attributes_info = arff.load(open(str(dataset_path), "r"))["attributes"]
+            attribute_names = [attribute[0] for attribute in attributes_info[:-1]]
+            class_name = attributes_info[-1][0]
+            df_X = pd.DataFrame.from_records(data=X, columns=attribute_names)
+            df_y = pd.DataFrame.from_records(data=y, columns=[class_name])
+            return df_X, df_y
+        elif type == "arff_path":
             return dataset_path
-        elif type == "arrays":
+        else:  # type == "arrays":
             data = arff.load(open(dataset_path, "r"))["data"]
             # select the last value to be the target
             X = [i[:-1] for i in data]
