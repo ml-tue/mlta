@@ -1,1 +1,2 @@
 from dataset_similarity.base_similarity_measure import BaseSimilarityMeasure
+from dataset_similarity.characterization_based_similarity import CharacterizationSimilarity
