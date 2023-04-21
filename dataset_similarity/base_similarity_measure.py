@@ -9,7 +9,7 @@ class BaseSimilarityMeasure:
     def __init__(self):
         pass
 
-    def compute(self, X1: pd.DataFrame, y1: Optional[pd.Series], X2: pd.DataFrame, y2: Optional[pd.Series]) -> float | NotImplementedError:
+    def compute(self, X1: pd.DataFrame, y1: Optional[pd.DataFrame], X2: pd.DataFrame, y2: Optional[pd.Series]) -> float | NotImplementedError:
         """Computes and returns a pair-wise similarity-value representing the (dis)similarity between the datasets.
 
         Arguments

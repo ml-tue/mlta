@@ -1,4 +1,3 @@
-import math
 from typing import List, Optional
 
 import pandas as pd
@@ -64,4 +63,4 @@ class CharacterizationSimilarity(BaseSimilarityMeasure):
         if by == "cosine_similarity":
             return 1 - spatial.distance.cosine(characterization_1, characterization_2)
         else:  # euclidian_distance
-            return math.dist(characterization_1, characterization_2)
+            return spatial.distance.euclidean(characterization_1, characterization_2)
