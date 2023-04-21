@@ -45,8 +45,22 @@ class BaseLearner:
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def get_top_configurations(self) -> List[Pipeline]:
-        """Get the top solutions stored curing the `online_phase`"""
+    def get_number_of_configurations(self) -> int:
+        "Returns an integer indicating the number of stored solutions, 0 if none are stored."
+        if self._top_configurations is None:
+            return 0
+        else: 
+            return len(self._top_configurations)
+
+    def get_top_configurations(self, n: int) -> List[Pipeline]:
+        """Get the top solutions stored curing the `online_phase`
+        
+        Arguments
+        ---------
+        n: integer,
+            the amount of solutions that should be returned
+
+        """
         if self._top_configurations is None:
             raise Warning("Meta-Learner has no configurations to return")
-        return self._top_configurations
+        return self._top_configurations[:n]
