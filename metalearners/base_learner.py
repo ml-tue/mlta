@@ -26,6 +26,7 @@ class BaseLearner:
         """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
         on the specified dataset (`X, `y``) within the specified time limit (`max_time`) in seconds.
         Should at least store the following: best `n_configs` solutions (sklearn.pipeline.Pipline) in self._top_configurations
+        Note: avoid passing a dataset (`X`,`y`) which is also in `offline_phase()`'s metadatabase `mdbase`
 
         Arguments
         ---------

@@ -198,10 +198,10 @@ class MetaDataBase:
         for eval in evaluations:
             pipe_name = eval.individual.pipeline_str()
             pipe_id = None
-            if not self._md_table.pipe_exists(pipe_name):  # only store previously unseen pipeline as code # TODO grows with mdbase size
+            if not self._md_table.pipe_exists(pipe_name):  # only store previously unseen pipeline as code
                 pipe_script = individual_to_python(eval.individual)  # dont store prepend steps, those are dataset specific
-                self._md_table.add_pipeline(pipe_name)  # TODO grows with mdbase size
-                pipe_id = int(self._md_table.get_pipeline_id(pipe_name))  # TODO grows with mdbase size
+                self._md_table.add_pipeline(pipe_name)
+                pipe_id = int(self._md_table.get_pipeline_id(pipe_name))
                 pipe_script_name = "pipeline_{}.py".format(pipe_id)
 
                 # write new pipeline to pipeline_{id}.py file in corresponding subdir in pipelines dir
@@ -223,11 +223,11 @@ class MetaDataBase:
         # store results in metadatabase
         new_records = {"dataset_id": datasets, "pipeline_id": pipelines, "score": scores, "metric": metrics, "logs_name": logs_names}
         new_records_df = pd.DataFrame.from_dict(new_records)
-        self._mdbase = pd.concat([self._mdbase, new_records_df])  # TODO grows with mdbase size
+        self._mdbase = pd.concat([self._mdbase, new_records_df])
 
         # write information to csvs (lookup tables and metadatabase)
-        self._md_table.update_tables()  # TODO grows with mdbase size
-        self._mdbase.to_csv(self._mdbase_path, index=False)  # TODO grows with mdbase size
+        self._md_table.update_tables()
+        self._mdbase.to_csv(self._mdbase_path, index=False)
 
     def list_datasets(self, by: str = "both") -> list:
         """Returns a list of datasets in the metadatabase
@@ -426,3 +426,21 @@ class MetaDataBase:
         mdbase.drop("index", axis=1, inplace=True)
 
         return mdbase
+
+    # TODO: add functionality for a partial view on the mdbase, e.g. not considering some datasets.
+    # would not want to copy over the entire mdbase because it may contain many pipeline files --> too slow.
+    # could do the following to facilitate partial view w.r.t. datasets:
+    # 1) copy over
+    # create a temporary directory temp in metadatabase root directory
+    # copy over the datasets to remove to dir metadatabase/temp/datasets
+    # copy over the entire ookup_tables/lookup_table_datasets.csv to dir metadatabase/temp/lookup_tables
+    # copy over metadatabase.csv to dir metadatabase/temp/
+
+    # 2) partial view: remove
+    # remove the specified datasets from metadatabase/datasets
+    # from lookup_tables/lookup_table_datasets.csv remove corresponding datasets
+    # from metadatabase.csv remove the entries on the corresponding datasets
+
+    # 3) restore: rename altered files, copy back the original files
+
+    # TODO: add functionality to add other users' prior experiences to MetaDataBase format instead of just add_gama_run
