@@ -49,12 +49,12 @@ class BaseLearner:
         "Returns an integer indicating the number of stored solutions, 0 if none are stored."
         if self._top_configurations is None:
             return 0
-        else: 
+        else:
             return len(self._top_configurations)
 
     def get_top_configurations(self, n: int) -> List[Pipeline]:
         """Get the top solutions stored curing the `online_phase`
-        
+
         Arguments
         ---------
         n: integer,
