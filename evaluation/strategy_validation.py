@@ -11,6 +11,7 @@ from metadatabase import MetaDataBase
 from metalearners import BaseLearner
 
 
+# TODO rework according to framework
 def strategy_loocv(
     mdbase: MetaDataBase,
     metalearning_strategy: BaseLearner,
