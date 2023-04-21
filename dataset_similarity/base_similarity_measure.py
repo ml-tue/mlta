@@ -32,9 +32,7 @@ class BaseSimilarityMeasure:
         """
         return NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def get_datasets(
-        self, X: pd.DataFrame, y: Optional[pd.Series], mdbase: MetaDataBase, n: int, by: str = "similarity"
-    ) -> List[Tuple[int, List[int | float]]] | NotImplementedError:
+    def get_datasets(self, X: pd.DataFrame, y: Optional[pd.DataFrame], mdbase: MetaDataBase, n: int, by: str = "similarity") -> List[Tuple[int, float]]:
         """Returns mdbase's dataset_ids by their (dis)similarity to specified dataset.
 
         Arguments
@@ -55,9 +53,24 @@ class BaseSimilarityMeasure:
 
         Returns
         -------
-        similar_entries: List[Tuple[int, List[int | float]]],
+        similar_entries: List[Tuple[int, float]],
             A list of tuples, where each tuple entry represents one dataset.
             The first element in the tuple refers to the dataset_id in `mdbase`,
             The second element is (dis)similarity-value between (X,y) and dataset with dataset_id.
         """
-        return NotImplementedError("Method `get_datasets` must be implemented by child class.")
+
+        similar_entries: List = []
+
+        # compute similarity between current dataset (`X`, `y`) and all other datasets in `mdbase`
+        for dataset_id in mdbase.list_datasets(by="id"):
+            df_X, df_y = mdbase.get_dataset(dataset_id, type="dataframe")
+            similarity = self.compute(df_X, df_y, X, y)  # type: ignore
+            similar_entries.append((dataset_id, similarity))
+
+        # sort and select the `n` datasets by criteria `by`
+        if by == "similarity":
+            similar_entries = sorted(similar_entries, key=lambda tup: tup[1], reverse=True)
+        else:  # "dissimilarity"
+            similar_entries = sorted(similar_entries, key=lambda tup: tup[1], reverse=False)
+
+        return similar_entries[:n]
