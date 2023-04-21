@@ -22,10 +22,10 @@ class BaseLearner:
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def online_phase(self, X: pd.DataFrame, y: pd.Series, max_time: int, metric: str, n_jobs: int) -> None:
+    def online_phase(self, X: pd.DataFrame, y: pd.DataFrame, max_time: int, metric: str, n_jobs: int, n_configs: int) -> None:
         """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
-        on the specified dataset (`new_task`) within the specified time limit (`max_time`) in seconds.
-        Should at least store the following: best solutions (sklearn.pipeline.Pipline) in self._top_configurations
+        on the specified dataset (`X, `y``) within the specified time limit (`max_time`) in seconds.
+        Should at least store the following: best `n_configs` solutions (sklearn.pipeline.Pipline) in self._top_configurations
 
         Arguments
         ---------
@@ -42,6 +42,9 @@ class BaseLearner:
         n_jobs: int,
             the `n_jobs` the online phase can use in its computations, especially important for meta-learners
             that evaluate models because they could evaluate a lot more or less depending on this value.
+        n_configs: integer,
+            specifies the number of configurations that should be stored in self._top_configurations
+            (ordered high-to-low by estimated performance)
         """
         raise NotImplementedError("Must be implemented by child class.")
 
