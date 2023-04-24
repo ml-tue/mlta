@@ -70,6 +70,6 @@ class BaseEvaluation:
         if self._evaluation_results is None:
             raise Warning("No results to store, run `evaluate()` before running `store_results()`")
 
-        with open("{}}.pkl".format(path), "wb") as fh:
+        with open("{}.pkl".format(path), "wb") as fh:
             pickle.dump(self._evaluation_results, fh)
         fh.close()
