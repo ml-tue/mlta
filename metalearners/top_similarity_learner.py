@@ -3,10 +3,8 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from scipy import spatial
 from sklearn.model_selection import cross_val_score
 
-from dataset_characterization import WistubaMetaFeatures
 from dataset_similarity import BaseSimilarityMeasure, CharacterizationSimilarity
 from metadatabase import MetaDataBase
 from metalearners import BaseSimilarityLearner
@@ -137,11 +135,11 @@ class TopSimilarityLearner(BaseSimilarityLearner):
                             # Must expect not all pipelines may work, e.g. feature selectors may remove all features
                             # therefore try fitting pipe, if it does not work do not consider it, fill it in with while loop later
                             try:
-                                score = float(np.mean(cross_val_score(pipe, X, y, scoring=metric, n_jobs=n_jobs)))
+                                score = float(np.mean(cross_val_score(pipe, X, y, cv=n_jobs, scoring=metric, n_jobs=n_jobs)))
                                 self.add_configuration(pipe, score, higher_is_better=True)
                             except ValueError as e:
                                 if verbosity == 1:
-                                    print("pipeline with id {} failed to fit, do not consider it".format(id))
+                                    print("pipeline with id {} failed to fit, do not consider it".format(pipe_id))
 
         except TimeoutException as e:
             if verbosity == 1:
