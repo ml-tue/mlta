@@ -23,7 +23,7 @@ class BaseLearner:
         """
         raise NotImplementedError("Must be implemented by child class.")
 
-    def online_phase(self, X: pd.DataFrame, y: pd.DataFrame, max_time: int, metric: str, n_jobs: int, n_configs: int) -> None:
+    def online_phase(self, X: pd.DataFrame, y: pd.DataFrame, max_time: int, metric: str, n_jobs: int, total_n_configs: int) -> None:
         """Execute the meta-learning strategy, with the previous `offline_phase` knowledge,
         on the specified dataset (`X, `y``) within the specified time limit (`max_time`) in seconds.
         Should at least store the following: best `n_configs` solutions (sklearn.pipeline.Pipline) in self._top_configurations
@@ -44,27 +44,34 @@ class BaseLearner:
         n_jobs: int,
             the `n_jobs` the online phase can use in its computations, especially important for meta-learners
             that evaluate models because they could evaluate a lot more or less depending on this value.
-        n_configs: integer,
+        total_n_configs: integer,
             specifies the number of configurations that should be stored in self._top_configurations
             (ordered high-to-low by estimated performance)
         """
         raise NotImplementedError("Must be implemented by child class.")
 
+    def clear_configurations(self):
+        """clears the meta-learners memory concerning configurations and their scores"""
+        self._top_configurations = []
+        self._configuration_scores = []
+
     def get_number_of_configurations(self) -> int:
         "Returns an integer indicating the number of stored solutions, 0 if none are stored."
         return len(self._top_configurations)
 
-    def get_top_configurations(self, n: int) -> List[Pipeline]:
+    def get_top_configurations(self, n: Optional[int]) -> List[Pipeline]:
         """Get the top solutions stored curing the `online_phase`
 
         Arguments
         ---------
         n: integer,
-            the amount of solutions that should be returned
-
+            Optional: if default (`None`), then all top_configurations are returned,
+            else the amount of solutions that should be returned.
         """
         if len(self._top_configurations) == 0:
             raise Warning("Meta-Learner has no configurations to return")
+        if n is None:
+            return self._top_configurations
         return self._top_configurations[:n]
 
     def add_configuration(self, configuration: Pipeline, score: float, higher_is_better: bool = True) -> None:
