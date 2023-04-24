@@ -257,16 +257,16 @@ class MetaDataBase:
             raise ValueError("Dataset with id: {} not present in the metadatabase".format(dataset_id))
 
         if type == "dataframe":
-            data = arff.load(open(str(dataset_path), "r"))["data"]
-            # select the last value to be the target
-            X = [i[:-1] for i in data]
-            y = [i[-1] for i in data]
-            attributes_info = arff.load(open(str(dataset_path), "r"))["attributes"]
-            attribute_names = [attribute[0] for attribute in attributes_info[:-1]]
-            class_name = attributes_info[-1][0]
-            df_X = pd.DataFrame.from_records(data=X, columns=attribute_names)
-            df_y = pd.DataFrame(y, columns=[class_name])
-            return df_X, df_y
+            with open(dataset_path, "r") as arff_file:
+                arff_dict = arff.load(arff_file)
+
+            attribute_names, _ = zip(*arff_dict["attributes"])
+            data = pd.DataFrame(arff_dict["data"], columns=attribute_names)
+            for attribute_name, dtype in arff_dict["attributes"]:
+                if isinstance(dtype, list):
+                    data[attribute_name] = data[attribute_name].astype("category")
+
+            return data.iloc[:, :-1], data.iloc[:, -1]  # type: ignore
         elif type == "arff_path":
             return dataset_path
         else:  # type == "arrays":
@@ -315,7 +315,6 @@ class MetaDataBase:
 
     def _get_preprocessing_steps(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame | pd.Series, is_classification: bool) -> list:
         """Returns the preprocessing steps (encoding and imputation) for the data"""
-        X, y_ = format_x_y(X, y)
         X_, basic_encoding_pipeline = basic_encoding(X, is_classification)
         fixed_pipeline_extension = basic_pipeline_extension(X_, is_classification)
 
