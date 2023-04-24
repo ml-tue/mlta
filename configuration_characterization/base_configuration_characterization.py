@@ -9,7 +9,7 @@ class BaseConfigurationCharacterization:
     def __init__(self):
         pass
 
-    def compute(self, pipe: Pipeline) -> List[int | float | str] | NotImplementedError:
+    def compute(self, pipe: Pipeline) -> List[int | float | str]:
         """Computes and returns a characterization for a configuration for the specified Pipeline.
 
         Arguments
@@ -23,9 +23,9 @@ class BaseConfigurationCharacterization:
             A list consisting of numerical values or possibly also str characterizating the pipeline,
             str is supported because a characterization of a configuration could contain qualitative information.
         """
-        return NotImplementedError("Method `compute` must be implemented by child class.")
+        raise NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def compute_mdbase_characterizations(self, mdbase: MetaDataBase) -> List[Tuple[int, List[int | float | str]]] | NotImplementedError:
+    def compute_mdbase_characterizations(self, mdbase: MetaDataBase) -> List[Tuple[int, List[int | float | str]]]:
         """Computes and returns the characterizations for all configuration (pipes) in the specified metadatabase.
 
         Arguments
@@ -40,4 +40,4 @@ class BaseConfigurationCharacterization:
             The first element in the tuple refers to the pipeline_id in `mdbase`,
             The second element is the vector representing the configuration (pipeline),
         """
-        return NotImplementedError("Method `compute_mdbase_characterizations` must be implemented by child class.")
+        raise NotImplementedError("Method `compute_mdbase_characterizations` must be implemented by child class.")
