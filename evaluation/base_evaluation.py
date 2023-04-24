@@ -6,10 +6,12 @@ from metalearners import BaseLearner
 
 
 class BaseEvaluation:
-    def __init__(self, max_time: int = 300, metric: str = "neg_log_loss", n_jobs: int = 1, verbosity: int = 1) -> None:
+    def __init__(self, n_configs: int = 25, max_time: int = 300, metric: str = "neg_log_loss", n_jobs: int = 1, verbosity: int = 1) -> None:
         """Initialize the Evaluation procedure, specifying its main static options
         Arguments
         ---------
+        n_configs: integer,
+            the number of solutions that should be evaluated for the metalearner (potentialy per dataset)
         max_time: int,
             time in seconds allowed for the metalearner's `online_phase()`
         metric: str,

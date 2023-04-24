@@ -1,1 +1,2 @@
-from evaluation.strategy_validation import strategy_loocv
+from evaluation.base_evaluation import BaseEvaluation
+from evaluation.leave_one_dataset_out_evaluation import LeaveOneDatasetOutEvaluation
