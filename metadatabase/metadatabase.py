@@ -392,9 +392,9 @@ class MetaDataBase:
         mdbase.drop("index", axis=1, inplace=True)
         # average out equivalent runs
         if avg_equivalent:
+            mdbase.drop_duplicates(inplace=True, ignore_index=True)
             ind_to_update = mdbase[mdbase.duplicated(subset=["dataset_id", "pipeline_id", "metric"], keep="last")].index.to_list()
             duplicates_to_remove = []
-
             for ind in ind_to_update:
                 # find which records have equivalent runs to the current one
                 record = mdbase.iloc[ind]

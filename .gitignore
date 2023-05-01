@@ -12,6 +12,7 @@ dataset_characterization/__pycache__
 configuration_characterization/__pycache__
 utilities/__pycache__
 evaluation/__pycache__
+evaluation_results
 metadatabase_openml18cc
 .vscode
 test.ipynb
