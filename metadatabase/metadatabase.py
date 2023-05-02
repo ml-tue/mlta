@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from gama import GamaClassifier
 from gama.data_formatting import format_x_y
+from gama.genetic_programming.components.individual import Individual
 from gama.postprocessing import EnsemblePostProcessing
 from gama.search_methods.async_ea import AsyncEA
 from gama.search_methods.base_search import BaseSearch
@@ -53,7 +54,7 @@ class MetaDataBase:
             self._md_table = MetaDataLookupTable(self._tables_dir)
             self._mdbase = pd.read_csv(self._mdbase_path, dtype={"dataset_id": "int64", "pipeline_id": "int64"})
 
-    def create_empty_metadatabase(self, path: str = "", name: str = "metadatabase"):
+    def create_empty_metadatabase(self, path: str = "", name: str = "metadatabase_name"):
         "Creates an empty metadatabase at path, only applicable if MetaDataBase was not initialized with exisiting metadatabase"
         # create paths for files
         self._mdbase_path = os.path.join(path, name, "metadatabase.csv")
@@ -222,6 +223,86 @@ class MetaDataBase:
 
         # store results in metadatabase
         new_records = {"dataset_id": datasets, "pipeline_id": pipelines, "score": scores, "metric": metrics, "logs_name": logs_names}
+        new_records_df = pd.DataFrame.from_dict(new_records)
+        self._mdbase = pd.concat([self._mdbase, new_records_df])
+
+        # write information to csvs (lookup tables and metadatabase)
+        self._md_table.update_tables()
+        self._mdbase.to_csv(self._mdbase_path, index=False)
+
+    def add_dataset_evaluations(self, dataset_path: str, dataset_name: str, logs_name: str, metric: str, pipelines: List[str], scores: List[float]):
+        """Add metadata evaluations pertaining a single dataset and metric to the metadatabase.
+            Currently there is not support for adding multiple datasets or on different metrics in a single call.
+
+        Arguments
+        ----------
+        dataset_path: str,
+            Path to the dataset, which should be in ARFF format.
+        dataset_name: str,
+            Name of the dataset, used to identify the dataset in the metadatabase.
+            Thus it is important to not use the same datasets with different names.
+            To be consistent, use the openml dataset names if available.
+        logs_name: str,
+            Specifies the name of the logs that will be stored in the metadataset.
+            Name must not already be present in the logs.
+        metric: str
+            Specifies the scoring metric the evaluations are evaluated on, supports options where greater values are better (e.g. a score)
+            Options for classification:
+                accuracy, roc_auc, average_precision, neg_log_loss,
+                precision_macro, precision_micro, precision_samples, precision_weighted,
+                recall_macro, recall_micro, recall_samples, recall_weighted,
+                f1_macro, f1_micro, f1_samples, f1_weighted
+            Options for regression:
+                explained_variance, r2, neg_mean_absolute_error, neg_mean_squared_log_error,
+                neg_median_absolute_error, neg_mean_squared_error
+        pipelines: List of strings
+            Strings representations of sklearn pipelines adhering to gama.individual.to_str() representation
+            # TODO if time remains, facilitate sklearn pipeline to str representation for the user
+            # It would require having a different string representation in the mdbase, because defaults hp's are currently not stored.
+            # It could in that case be a more generic representation in the mdbase, more like str(Pipeline) instead of current GAMA based representation
+        scores: List of floats
+            The scores that accompany the `pipelines`, such that matching indices in `pipeline` and `scores` belong together.
+        """
+        if self._mdbase_path == None or self._pipelines_dir == None or self._datasets_dir == None or self._tables_dir == None:
+            raise ValueError("No csv files associated to the metadatabase. \nFirst create a metadatabase. \nAborted GAMA run.")
+        if os.path.exists(os.path.join(str(self._logs_dir), logs_name)):
+            raise ValueError("This log file name `logs_name` already exists. \nAborted GAMA run.")
+        if len(pipelines) != len(scores):
+            raise ValueError("Dimensionality of `pipelines` and `scores` does not match, it should have same length.")
+
+        dataset_id = None
+        # if needed, store and copy the dataset
+        if not self._md_table.dataset_exists(dataset_name):
+            self._md_table.add_dataset(dataset_name)
+            dataset_id = self._md_table.get_dataset_id(dataset_name)
+            shutil.copyfile(dataset_path, os.path.join(self._datasets_dir, "{}.arff".format(dataset_id)))
+        else:  # still need to get dataset id
+            dataset_id = self._md_table.get_dataset_id(dataset_name)
+
+        # format evaluations for mdbase storage
+        n_evals = len(pipelines)
+        mdbase_datasets = [dataset_id] * n_evals
+        mdbase_metrics = [metric] * n_evals
+        mdbase_logs_names = [logs_name] * n_evals
+        mdbase_scores = scores
+        mdbase_pipeline_ids = []
+        for pipe_str in pipelines:
+            if not self._md_table.pipe_exists(pipe_str):
+                self._md_table.add_pipeline(pipe_str)
+            pipe_id = int(self._md_table.get_pipeline_id(pipe_str))
+            mdbase_pipeline_ids.append(pipe_id)
+
+            # write new pipeline to pipeline_{id}.py file in corresponding subdir in pipelines dir
+            pipe_script = individual_to_python(Individual.from_string(pipe_str))  # dont store prepend steps, those are dataset specific
+            pipe_script_name = "pipeline_{}.py".format(pipe_id)
+            dir_id = str(hash_pipe_id_to_dir(pipe_id))
+            pipe_path = os.path.join(self._pipelines_dir, dir_id, pipe_script_name)
+            with open(pipe_path, "w+") as fh:
+                fh.write(pipe_script)
+                fh.close()
+
+        # store results in metadatabase
+        new_records = {"dataset_id": mdbase_datasets, "pipeline_id": mdbase_pipeline_ids, "score": mdbase_scores, "metric": mdbase_metrics, "logs_name": mdbase_logs_names}
         new_records_df = pd.DataFrame.from_dict(new_records)
         self._mdbase = pd.concat([self._mdbase, new_records_df])
 
