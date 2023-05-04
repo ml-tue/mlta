@@ -2,6 +2,7 @@ gama_metadatabase.ipynb
 meta_learning.ipynb
 openml_metadatabase.ipynb
 populate_metadatabase.ipynb
+warm_start.ipynb
 test.py
 wistuba_mf.pkl
 evaluations/__pycache__
@@ -16,3 +17,4 @@ evaluation_results
 metadatabase_openml18cc
 .vscode
 test.ipynb
+gama

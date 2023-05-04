@@ -6,6 +6,8 @@ from typing import List, Optional, Tuple
 import arff
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
+
 from gama import GamaClassifier
 from gama.data_formatting import format_x_y
 from gama.genetic_programming.components.individual import Individual
@@ -14,8 +16,6 @@ from gama.search_methods.async_ea import AsyncEA
 from gama.search_methods.base_search import BaseSearch
 from gama.utilities.export import format_import, individual_to_python
 from gama.utilities.preprocessing import basic_encoding, basic_pipeline_extension
-from sklearn.pipeline import Pipeline
-
 from metadatabase.metadatalookuptable import MetaDataLookupTable
 from utilities import hash_pipe_id_to_dir
 
@@ -293,7 +293,7 @@ class MetaDataBase:
             mdbase_pipeline_ids.append(pipe_id)
 
             # write new pipeline to pipeline_{id}.py file in corresponding subdir in pipelines dir
-            pipe_script = individual_to_python(Individual.from_string(pipe_str))  # dont store prepend steps, those are dataset specific
+            pipe_script = individual_to_python(Individual.from_string(pipe_str))  # dont store prepend steps, those are dataset specific # TODO check whether this works correctly
             pipe_script_name = "pipeline_{}.py".format(pipe_id)
             dir_id = str(hash_pipe_id_to_dir(pipe_id))
             pipe_path = os.path.join(self._pipelines_dir, dir_id, pipe_script_name)
