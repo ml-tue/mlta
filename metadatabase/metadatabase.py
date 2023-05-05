@@ -256,10 +256,8 @@ class MetaDataBase:
                 explained_variance, r2, neg_mean_absolute_error, neg_mean_squared_log_error,
                 neg_median_absolute_error, neg_mean_squared_error
         pipelines: List of strings
-            Strings representations of sklearn pipelines adhering to gama.individual.to_str() representation
-            # TODO if time remains, facilitate sklearn pipeline to str representation for the user
-            # It would require having a different string representation in the mdbase, because defaults hp's are currently not stored.
-            # It could in that case be a more generic representation in the mdbase, more like str(Pipeline) instead of current GAMA based representation
+            Strings representations of sklearn pipelines adhering to gama individual string representation
+                Could use `utilities.sklearn_pipe_to_individual_str()` for the conversion from sklearn pipelines.
         scores: List of floats
             The scores that accompany the `pipelines`, such that matching indices in `pipeline` and `scores` belong together.
         """
@@ -293,7 +291,10 @@ class MetaDataBase:
             mdbase_pipeline_ids.append(pipe_id)
 
             # write new pipeline to pipeline_{id}.py file in corresponding subdir in pipelines dir
-            pipe_script = individual_to_python(Individual.from_string(pipe_str))  # dont store prepend steps, those are dataset specific # TODO check whether this works correctly
+            gama = GamaClassifier()
+            individual = Individual.from_string(pipe_str, gama._pset, gama._operator_set._safe_compile)
+            gama.cleanup(which="all")
+            pipe_script = individual_to_python(individual)  # dont store prepend steps, those are dataset specific # TODO check whether this works correctly
             pipe_script_name = "pipeline_{}.py".format(pipe_id)
             dir_id = str(hash_pipe_id_to_dir(pipe_id))
             pipe_path = os.path.join(self._pipelines_dir, dir_id, pipe_script_name)
