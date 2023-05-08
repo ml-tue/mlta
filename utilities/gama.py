@@ -1,11 +1,10 @@
 from copy import deepcopy
 from typing import List
 
-from sklearn._config import set_config
-from sklearn.pipeline import Pipeline
-
 from gama import GamaClassifier
 from gama.configuration.classification import clf_config
+from sklearn._config import set_config
+from sklearn.pipeline import Pipeline
 
 
 def sklearn_pipe_to_individual_str(

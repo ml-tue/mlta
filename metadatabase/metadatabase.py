@@ -8,7 +8,6 @@ import arff
 import numpy as np
 import pandas as pd
 from gama import GamaClassifier
-from gama.data_formatting import format_x_y
 from gama.genetic_programming.components.individual import Individual
 from gama.postprocessing import EnsemblePostProcessing
 from gama.search_methods.async_ea import AsyncEA
