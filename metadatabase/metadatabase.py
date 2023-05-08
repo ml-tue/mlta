@@ -1,13 +1,12 @@
 import importlib
 import os
 import shutil
+import warnings
 from typing import List, Optional, Tuple
 
 import arff
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-
 from gama import GamaClassifier
 from gama.data_formatting import format_x_y
 from gama.genetic_programming.components.individual import Individual
@@ -16,6 +15,8 @@ from gama.search_methods.async_ea import AsyncEA
 from gama.search_methods.base_search import BaseSearch
 from gama.utilities.export import format_import, individual_to_python
 from gama.utilities.preprocessing import basic_encoding, basic_pipeline_extension
+from sklearn.pipeline import Pipeline
+
 from metadatabase.metadatalookuptable import MetaDataLookupTable
 from utilities import hash_pipe_id_to_dir
 
@@ -33,6 +34,9 @@ class MetaDataBase:
         self._logs_dir = None
         self._md_table: MetaDataLookupTable  # lookuptable for pipelines and datasets
         self._mdbase: pd.DataFrame  # actually stores the solutions with their scores on datasets
+
+        if os.path.isdir(os.path.join(path, "tmp")):
+            warnings.warn("The metadatabase has a partial view w.r.t datasets. Run `restore_view()` for a full view.")
 
         if path != "":
             self._mdbase_path = os.path.join(path, "metadatabase.csv")
@@ -508,20 +512,93 @@ class MetaDataBase:
 
         return mdbase
 
-    # TODO: add functionality for a partial view on the mdbase, e.g. not considering some datasets.
-    # would not want to copy over the entire mdbase because it may contain many pipeline files --> too slow.
-    # could do the following to facilitate partial view w.r.t. datasets:
-    # 1) copy over
-    # create a temporary directory temp in metadatabase root directory
-    # copy over the datasets to remove to dir metadatabase/temp/datasets
-    # copy over the entire ookup_tables/lookup_table_datasets.csv to dir metadatabase/temp/lookup_tables
-    # copy over metadatabase.csv to dir metadatabase/temp/
+    def partial_datasets_view(self, datasets: List[int]) -> None:
+        """Facilitates a temporary partial view on the metadatabase with respect to the datasets.
+        Alters the metadatabase files, but does not delete any information. To restore the full view run `restore_view()`
 
-    # 2) partial view: remove
-    # remove the specified datasets from metadatabase/datasets
-    # from lookup_tables/lookup_table_datasets.csv remove corresponding datasets
-    # from metadatabase.csv remove the entries on the corresponding datasets
+        Arguments
+        ---------
+        datasets, List of integers,
+            ids of datasets that should be temporarily removed from the metadatabase views.
+        """
+        self._set_partial_view_paths()
+        if os.path.isdir(self._tmp_dir):
+            raise Warning("Cannot create a partial view: already in a partial view. To create a new partial view: \n close current view by `restore_view()`")
 
-    # 3) restore: rename altered files, copy back the original files
+        os.mkdir(self._tmp_dir)
+        os.mkdir(self._tmp_datasets_dir)
 
-    # TODO: add functionality to add other users' prior experiences to MetaDataBase format instead of just add_gama_run
+        # copy over the datasets we do not want, and remove them accordingly
+        unwanted_dataset_ids = [id for id in self.list_datasets(by="id") if id not in datasets]
+        for id in unwanted_dataset_ids:
+            dataset_file = "{}.arff".format(id)
+            src_path = os.path.join(str(self._datasets_dir), dataset_file)
+            dst_path = os.path.join(self._tmp_datasets_dir, dataset_file)
+            shutil.copyfile(src_path, dst_path)
+            os.remove(src_path)
+
+        # copy over the lookup_tables/lookup_table_datasets.csv to dir metadatabase/temp/lookup_tables
+        src_lookup_table = os.path.join(str(self._tables_dir), "lookup_table_datasets.csv")
+        shutil.copyfile(src_lookup_table, self._tmp_datasets_table)
+        # create new lookup table without the unwanted datasets and update in memory lookuptable
+        df_lookup_table = pd.read_csv(self._tmp_datasets_table, index_col=0)
+        df_lookup_table = df_lookup_table[df_lookup_table["dataset_id"].isin(datasets)]
+        df_lookup_table.to_csv(src_lookup_table)
+
+        # copy over metadatabase.csv to dir metadatabase/temp/
+        src_mdbase_table = os.path.join(self._root_dir, "metadatabase.csv")
+        shutil.copyfile(src_mdbase_table, self._tmp_mdbase_table)
+        # overwrite the src_mdbase_table with file without unwanted datasets
+        self._mdbase = self.get_df(datasets=datasets)
+        self._mdbase.to_csv(src_mdbase_table, index=False)
+
+        # pipelines update
+        src_pipelines_table = os.path.join(str(self._tables_dir), "lookup_table_pipelines.csv")
+        shutil.copyfile(src_pipelines_table, self._tmp_pipelines_table)
+        remaining_pipes = list(dict.fromkeys(list(self._mdbase["pipeline_id"])))
+        df_pipes = pd.read_csv(self._tmp_pipelines_table, index_col=0)
+        df_pipes = df_pipes[df_pipes["pipeline_id"].isin(remaining_pipes)]
+        df_pipes.to_csv(src_pipelines_table)
+        self._md_table = MetaDataLookupTable(path=str(self._tables_dir))  # update for both datasets and pipelines table
+
+    def restore_view(self) -> None:
+        """Restores the view on the metadatabase view created with `partial_datasets_view()`."""
+        # need to ensure all paths are set, because it enables usage of function when a MetaDataBase object was deleted
+        self._set_partial_view_paths()
+
+        if not os.path.isdir(self._tmp_dir):
+            raise Warning("There is nothing to restore with `restore_view()`, no tmp directory found in metadatabase dir.")
+
+        # restore datasets
+        for dataset_file in os.listdir(self._tmp_datasets_dir):
+            src_file = os.path.join(self._tmp_datasets_dir, dataset_file)
+            dst_file = os.path.join(str(self._datasets_dir), dataset_file)
+            shutil.copyfile(src_file, dst_file)
+
+        # restore datset lookup table
+        dst_path = os.path.join(str(self._tables_dir), "lookup_table_datasets.csv")
+        os.remove(dst_path)  # remove such that we can replace it with old file in tmp dir
+        shutil.copyfile(self._tmp_datasets_table, dst_path)
+        # restore pipeline lookup table
+        dst_path = os.path.join(str(self._tables_dir), "lookup_table_pipelines.csv")
+        os.remove(dst_path)
+        shutil.copyfile(self._tmp_pipelines_table, dst_path)
+        self._md_table = MetaDataLookupTable(path=str(self._tables_dir))
+
+        # restore mdbase_table
+        src_path = os.path.join(self._tmp_dir, "metadatabase.csv")
+        dst_path = os.path.join(self._root_dir, "metadatabase.csv")
+        self._mdbase = pd.read_csv(src_path)
+        os.remove(dst_path)  # remove the adapted `metadatabase.csv`
+        shutil.copyfile(src_path, dst_path)
+
+        shutil.rmtree(self._tmp_dir)
+
+    def _set_partial_view_paths(self) -> None:
+        """Method setting paths that are used in `partial_datasets_view()` and `restore_view()`"""
+        self._root_dir = os.path.split(str(self._datasets_dir))[0]
+        self._tmp_dir = os.path.join(self._root_dir, "tmp")
+        self._tmp_datasets_dir = os.path.join(self._tmp_dir, "datasets")
+        self._tmp_datasets_table = os.path.join(self._tmp_dir, "lookup_table_datasets.csv")
+        self._tmp_mdbase_table = os.path.join(self._tmp_dir, "metadatabase.csv")
+        self._tmp_pipelines_table = os.path.join(self._tmp_dir, "lookup_table_pipelines.csv")
