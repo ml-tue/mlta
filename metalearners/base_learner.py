@@ -1,4 +1,5 @@
 from typing import List, Optional
+import warnings
 
 import pandas as pd
 from sklearn.pipeline import Pipeline
@@ -69,7 +70,7 @@ class BaseLearner:
             else the amount of solutions that should be returned.
         """
         if len(self._top_configurations) == 0:
-            raise Warning("Meta-Learner has no configurations to return")
+            warnings.warn("Meta-Learner has no configurations to return")
         if n is None:
             return self._top_configurations
         return self._top_configurations[:n]
