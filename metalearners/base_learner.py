@@ -1,5 +1,5 @@
-from typing import List, Optional
 import warnings
+from typing import List, Optional
 
 import pandas as pd
 from sklearn.pipeline import Pipeline
