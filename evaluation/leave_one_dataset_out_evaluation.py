@@ -85,8 +85,11 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         evaluation_results = []
 
         dataset_ids = mdbase.list_datasets(by="id")
-        for did in dataset_ids:  # leave this one dataset out
-            df_X, df_y = mdbase.get_dataset(did, type="dataframe")
+        for did in dataset_ids:
+            df_X, df_y = mdbase.get_dataset(did, type="dataframe")  # get data for online_phase
+            datasets_to_keep = mdbase.list_datasets(by="id")
+            datasets_to_keep.remove(did)
+            mdbase.partial_datasets_view(datasets_to_keep)  # remove current dataset from mdbase
 
             if self._validation_strategy == "holdout":
                 if dataset_characterizations != None:
@@ -95,7 +98,6 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                     for characterization in dataset_characterizations:
                         if characterization[0] != did:
                             selected_characterizations.append(characterization)
-                    # TODO: do not include current dataset in mdbase?
                     if config_characterizations != None:
                         metalearner.offline_phase(mdbase=mdbase, dataset_characterizations=selected_characterizations, config_characterizations=config_characterizations)
                     else:  # just dataset characterizations
@@ -111,29 +113,28 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
 
                 if metalearner.get_number_of_configurations() == 0:  # nothing to add
                     evaluation_results.append((did, None))
-                    continue
-
-                # evaluate each of the configurations on the held out test set
-                dataset_eval_results = []
-                for configuration in metalearner.get_top_configurations(n=self._n_configs):
-                    if configuration is None:
-                        dataset_eval_results.append(None)
-                    else:
-                        try:
-                            configuration.fit(X_train, y_train)
-                        except ValueError as e:
-                            if self._verbosity == 1:
-                                print("The configuration could not be fitted, hence added as `None` to results of dataset {}".format(did))
-                                dataset_eval_results.append(None)
-                                continue
-                        performance: float = -np.inf  # stores performance according to metric
-                        # TODO implement more options
-                        if self._metric == "neg_log_loss":
-                            y_pred = configuration.predict_proba(X_test)
-                            labels = np.unique(LabelEncoder().fit_transform(df_y))
-                            performance = float(-1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels))
-                        dataset_eval_results.append(performance)
-                evaluation_results.append((did, dataset_eval_results))
+                else:
+                    # evaluate each of the configurations on the held out test set
+                    dataset_eval_results = []
+                    for configuration in metalearner.get_top_configurations(n=self._n_configs):
+                        if configuration is None:
+                            dataset_eval_results.append(None)
+                        else:
+                            try:
+                                configuration.fit(X_train, y_train)
+                            except ValueError as e:
+                                if self._verbosity == 1:
+                                    print("The configuration could not be fitted, hence added as `None` to results of dataset {}".format(did))
+                                    dataset_eval_results.append(None)
+                                    continue
+                            performance: float = -np.inf  # stores performance according to metric
+                            # TODO implement more options
+                            if self._metric == "neg_log_loss":
+                                y_pred = configuration.predict_proba(X_test)
+                                labels = np.unique(LabelEncoder().fit_transform(df_y))
+                                performance = float(-1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels))
+                            dataset_eval_results.append(performance)
+                    evaluation_results.append((did, dataset_eval_results))
 
             # TODO: implement k-fold
             # if k-fold cv:
@@ -151,6 +152,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
             if self._verbosity == 1:
                 print("Done with dataset with id: {}".format(did))
             metalearner.clear_configurations()  # reset the metalearner's memory for next dataset
+            mdbase.restore_view()
 
         self._evaluation_results = evaluation_results
         return evaluation_results
