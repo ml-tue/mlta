@@ -1,5 +1,7 @@
-import pickle
 from typing import List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 from metadatabase import MetaDataBase
 from metalearners import BaseLearner
@@ -65,11 +67,26 @@ class BaseEvaluation:
         """
         raise NotImplementedError("This method should be implemented by a child class.")
 
-    def store_results(self, path: str):
-        """Meant to be ran after `evaluate()`, to store its results to `path`.pkl"""
+    def store_results(self, path: str, metalearner_name: str):
+        """Meant to be ran after `evaluate()`, to store its results to `path`.csv
+
+        Arguments
+        ---------
+        metalearner_name: string
+            the name the metalearner gets in the csv file under the "metalearner_name" header
+        """
         if self._evaluation_results is None:
             raise Warning("No results to store, run `evaluate()` before running `store_results()`")
 
-        with open("{}.pkl".format(path), "wb") as fh:
-            pickle.dump(self._evaluation_results, fh)
-        fh.close()
+        results = []
+        for dataset_results in self._evaluation_results:
+            if dataset_results[1] is not None:
+                if len(dataset_results[1]) != 0:
+                    for score in dataset_results[1]:
+                        results.append([metalearner_name, "{}".format(dataset_results[0]), score])
+
+        if results == []:
+            raise Warning("No results to store, all dataset evaluations were None.")
+
+        evaluation_df = pd.DataFrame(np.array(results), columns=["metalearner_name", "dataset_id", "{}".format(self._metric)])
+        evaluation_df.to_csv(path, index=False)
