@@ -10,7 +10,7 @@ from metadatabase import MetaDataBase
 class BaseLearner:
     def __init__(self):
         self._top_configurations: List[Pipeline] = []  # ranked on expected performance
-        self._configuration_scores: List[float] = []  # scores to rank configurations by
+        self._configuration_scores: List[float | None] = []  # scores to rank configurations by
 
     def offline_phase(self, mdbase: MetaDataBase, **kwargs) -> None:
         """Performs offline computation for the `online_phase()` using the specified metadatabase.
@@ -75,15 +75,16 @@ class BaseLearner:
             return self._top_configurations
         return self._top_configurations[:n]
 
-    def add_configuration(self, configuration: Pipeline, score: float, higher_is_better: bool = True) -> None:
-        """Adds configuration `configuration` to self._top_configurations in approriate place, according to `higher_is_better`
+    def add_configuration(self, configuration: Pipeline, score: float | None, higher_is_better: bool = True) -> None:
+        """Adds configuration `configuration` to self._top_configurations in approriate place if score is not None, according to `higher_is_better`
 
         configuration: Pipeline:
             The pipeline configuration to add
-        score: float,
-            the score the `configuration` is estimated to have, to rank it by using `higher_is_better` in `self.top_configurations`
+        score: float or None
+            the score the `configuration` is estimated to have, to rank it by using `higher_is_better` in `self.top_configurations`.
+            If it is None then the configurations are not ordered.
         higher_is_better: boolean
-            True:  a higher `score` is better, False: a lower score is better
+            True:  a higher `score` is better, False: a lower score is better. Can be disregarded if `score` is `None`.
         """
         # simply add if first entry
         if len(self._configuration_scores) == 0 and len(self._top_configurations) == 0:
@@ -91,21 +92,26 @@ class BaseLearner:
             self._configuration_scores = [score]
             return
 
-        added = False
-        for i, config_score in enumerate(self._configuration_scores):
-            if higher_is_better:
-                if score > config_score:
-                    self._top_configurations.insert(i, configuration)
-                    self._configuration_scores.insert(i, score)
-                    added = True
-                    break
-            else:  # lower is better
-                if score < config_score:
-                    self._top_configurations.insert(i, configuration)
-                    self._configuration_scores.insert(i, score)
-                    added = True
-                    break
-        if not added:  # add at end if necessary
-            new_index = self.get_number_of_configurations() + 1
-            self._top_configurations.insert(new_index, configuration)
-            self._configuration_scores.insert(new_index, score)
+        if score is None:  # do not order configurations
+            new_end_ind = len(self._top_configurations) + 1
+            self._top_configurations.insert(new_end_ind, configuration)
+            self._configuration_scores.insert(new_end_ind, score)
+        else:  # do order configurations
+            added = False
+            for i, config_score in enumerate(self._configuration_scores):
+                if higher_is_better:
+                    if score > config_score:
+                        self._top_configurations.insert(i, configuration)
+                        self._configuration_scores.insert(i, score)
+                        added = True
+                        break
+                else:  # lower is better
+                    if score < config_score:
+                        self._top_configurations.insert(i, configuration)
+                        self._configuration_scores.insert(i, score)
+                        added = True
+                        break
+            if not added:  # add at end if necessary
+                new_index = self.get_number_of_configurations() + 1
+                self._top_configurations.insert(new_index, configuration)
+                self._configuration_scores.insert(new_index, score)

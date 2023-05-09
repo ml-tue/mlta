@@ -1,5 +1,6 @@
 import os
 from typing import List
+from xmlrpc.client import Boolean
 
 import numpy as np
 import pandas as pd
@@ -32,7 +33,6 @@ class TopSimilarityLearner(BaseSimilarityLearner):
         ---------
         mdbase: MetaDataBase,
             metadatabase of prior experiences, as created in metadatabase.MetaDataBase class.
-
         **kwargs
             if keyword dataset_characterizations present, then meta-features are extracted therefrom
             dataset_characterizations: List[Tuple[int, List[int | float]]]
@@ -65,6 +65,7 @@ class TopSimilarityLearner(BaseSimilarityLearner):
         X: pd.DataFrame,
         y: pd.DataFrame,
         max_time: int = 120,
+        evaluate_recommendations: bool = False,
         metric: str = "neg_log_loss",
         n_jobs: int = 1,
         total_n_configs: int = 25,
@@ -87,6 +88,9 @@ class TopSimilarityLearner(BaseSimilarityLearner):
             The amount of time the online phase is allowed to take. Additionally, when evaluating the method,
                 the evaluation method such as LOOCV will take care of time keeping as well.
                 This specific metalearning strategy does not use the available time in its strategy.
+        evaluate_recommendations: boolean,
+            whether or not the pipeline is evaluated on (X,y) before including it (in `self._top_configurations`).
+            If the pipeline are evaluated, then they are ordered by their rank in `self._top_configurations`.
         metric: str,
             metrics/ or scoring by which to select the top evaluations from the most similar task
         n_jobs: int,
@@ -134,12 +138,16 @@ class TopSimilarityLearner(BaseSimilarityLearner):
                             pipe = self._mdbase.get_sklearn_pipeline(pipe_id, X, y, True)
                             # Must expect not all pipelines may work, e.g. feature selectors may remove all features
                             # therefore try fitting pipe, if it does not work do not consider it, fill it in with while loop later
-                            try:
-                                score = float(np.mean(cross_val_score(pipe, X, y, cv=n_jobs, scoring=metric, n_jobs=n_jobs)))
+                            if evaluate_recommendations:
+                                try:
+                                    score = float(np.mean(cross_val_score(pipe, X, y, cv=n_jobs, scoring=metric, n_jobs=n_jobs)))
+                                    self.add_configuration(pipe, score, higher_is_better=True)
+                                except ValueError as e:
+                                    if verbosity == 1:
+                                        print("pipeline with id {} failed to fit, do not consider it".format(pipe_id))
+                            else:
+                                score = None  # did not evaluate
                                 self.add_configuration(pipe, score, higher_is_better=True)
-                            except ValueError as e:
-                                if verbosity == 1:
-                                    print("pipeline with id {} failed to fit, do not consider it".format(pipe_id))
 
         except TimeoutException as e:
             if verbosity == 1:
