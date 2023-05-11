@@ -1,8 +1,10 @@
 from copy import deepcopy
 from typing import List
 
+import pandas as pd
 from gama import GamaClassifier
 from gama.configuration.classification import clf_config
+from gama.utilities.preprocessing import basic_encoding, basic_pipeline_extension
 from sklearn._config import set_config
 from sklearn.pipeline import Pipeline
 
@@ -148,3 +150,10 @@ def create_warm_starters(ind_strs: List[str], n_ind: int) -> List[str]:
     random_starters = [gama._operator_set.individual().pipeline_str() for _ in range(0, n_ind - len(ind_strs))]
     gama.cleanup(which="all")
     return ind_strs + random_starters
+
+
+def get_fixed_preprocessed_data(X: pd.DataFrame):
+    X_, basic_encoding_pipeline = basic_encoding(X, True)  # need to preprocess the data for PCA
+    fixed_pipeline_extension = basic_pipeline_extension(X_, True)
+    pipe = Pipeline(basic_encoding_pipeline.steps + fixed_pipeline_extension)
+    return pipe.fit_transform(X)
