@@ -5,6 +5,7 @@ populate_metadatabase.ipynb
 warm_start.ipynb
 test.py
 wistuba_mf.pkl
+feurer_characterizations_with_names.pkl
 evaluations/__pycache__
 metadatabase/__pycache__
 metalearners/__pycache__
