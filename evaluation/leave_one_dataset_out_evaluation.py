@@ -119,12 +119,17 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                     for configuration in metalearner.get_top_configurations(n=self._n_configs):
                         if configuration is None:
                             dataset_eval_results.append(None)
-                        else:
+                        else:  # TODO: do I want a time limit on evaluation fit time?, otherwise it could perhaps never finish?
                             try:
-                                configuration.fit(X_train, y_train)
+                                configuration.fit(X_train, y_train)  # error MemoryError, should catch that too
                             except ValueError as e:
                                 if self._verbosity == 1:
-                                    print("The configuration could not be fitted, hence added as `None` to results of dataset {}".format(did))
+                                    print("The configuration could not be fitted, incompatible pipeline. Hence added as `None` to results of dataset {}".format(did))
+                                    dataset_eval_results.append(None)
+                                    continue
+                            except MemoryError as m:
+                                if self._verbosity == 1:
+                                    print("The configuration could not be fitted due to a memory error. Hence added as `None` to results of dataset {}".format(did))
                                     dataset_eval_results.append(None)
                                     continue
                             performance: float = -np.inf  # stores performance according to metric
