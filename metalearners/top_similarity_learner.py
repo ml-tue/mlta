@@ -115,7 +115,7 @@ class TopSimilarityLearner(BaseSimilarityLearner):
                     new_characterization = self._similarity_measure._characterization_method.compute(X, y)
                     # order entries in mdbase by similarity
                     for dataset_entry in self._characterizations:
-                        similarity = self._similarity_measure.compute_from_characterizations(new_characterization, dataset_entry[1])  # type: ignore
+                        similarity = self._similarity_measure.compute_from_characterizations(new_characterization[0], dataset_entry[1])  # type: ignore
                         similar_entries.append((dataset_entry[0], similarity))
                     similar_entries = sorted(similar_entries, key=lambda tup: tup[1], reverse=True)
                 else:  # non-characterization based
