@@ -10,7 +10,7 @@ class BaseDatasetCharacterization:
     def __init__(self):
         pass
 
-    def compute(self, X: pd.DataFrame, y: Optional[pd.DataFrame]) -> List[int | float]:
+    def compute(self, X: pd.DataFrame, y: Optional[pd.DataFrame]) -> Tuple[List[int | float], List[str]]:
         """Computes and returns a characterization for the dataset given by X and y.
 
         Arguments
@@ -23,12 +23,14 @@ class BaseDatasetCharacterization:
 
         Returns
         -------
-        characterization: List[int | float],
-            A list of numerical values characterizating the dataset (given by `X` and `y`)
+        characterization: Tuple[List[int | float], List[str]]
+            A tuple of two lists representing the characterization of the dataset.
+            the first list contains numerical values characterizating the dataset (given by `X` and `y`),
+            The last list contains the names of the dimensions/features, which could be number-like if they have no meaning.
         """
         raise NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def compute_mdbase_characterizations(self, mdbase: MetaDataBase, ids: Optional[List[int]] = None, verbosity: int = 1) -> List[Tuple[int, List[int | float]]]:
+    def compute_mdbase_characterizations(self, mdbase: MetaDataBase, ids: Optional[List[int]] = None, verbosity: int = 1) -> List[Tuple[int, List[int | float], List[str]]]:
         """Computes and returns the dataset characterization for all datasets in the specified metadatabase.
 
         Arguments
@@ -43,10 +45,11 @@ class BaseDatasetCharacterization:
 
         Returns
         -------
-        dataset_characterizations: List[Tuple[int, List[int | float]]],
+        dataset_characterizations: List[Tuple[int, List[int | float], List[str]]],
             A list of tuples, where each tuple represents a dataset characterization.
             The first element in the tuple refers to the dataset_id in `mdbase`,
             The second element is the purely numeric vector representing the dataset,
+            The last element contains the names of the dimensions/features, which could be number-like if they have no meaning.
         """
         dataset_characterizations = []
         if ids is None:
