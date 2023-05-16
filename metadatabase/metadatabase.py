@@ -727,7 +727,7 @@ class MetaDataBase:
         for id in dataset_ids:
             if id not in [int(val) for val in list(char_df["dataset_id"].values)]:  # dataset id to select not in characterization
                 raise ValueError("Cannot include dataset with id: {} for characterization: {}. It does not exist in the metadatabase.".format(id, characterization_name))
-            char_values = list(float(val) for val in char_df[char_df["dataset_id"] == id].values[0])
+            char_values = list(float(val) for val in char_df[char_df["dataset_id"] == id].values[0])[1:]
             characterizations.append((id, char_values))
 
         return characterizations
