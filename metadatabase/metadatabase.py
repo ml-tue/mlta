@@ -24,13 +24,16 @@ from utilities import hash_pipe_id_to_dir
 class MetaDataBase:
     def __init__(self, path: str = ""):
         """Initializes the MetaDataBase. `path` is optional, if set then the metadatabase is loaded from path
-        path should contain 4 folders: 'pipelines', 'datasets', 'lookup_tables', 'logs' Additionally it should contain 'metadatabase.csv'"""
+        path should contain 6 dirs: 'pipelines', 'datasets', 'lookup_tables', 'logs', 'dataset_characterizations', 'configuration_characterizations'
+        Additionally it should contain 'metadatabase.csv'"""
 
         self._mdbase_path = None
         self._pipelines_dir = None
         self._datasets_dir = None
         self._tables_dir = None
         self._logs_dir = None
+        self._dataset_char_dir = None
+        self._config_char_dir = None
         self._md_table: MetaDataLookupTable  # lookuptable for pipelines and datasets
         self._mdbase: pd.DataFrame  # actually stores the solutions with their scores on datasets
 
@@ -43,6 +46,8 @@ class MetaDataBase:
             self._datasets_dir = os.path.join(path, "datasets")
             self._tables_dir = os.path.join(path, "lookup_tables")
             self._logs_dir = os.path.join(path, "logs")
+            self._dataset_char_dir = os.path.join(path, "dataset_characterizations")
+            self._config_char_dir = os.path.join(path, "config_characterizations")
 
             # check if the specified files exist
             if not os.path.exists(self._mdbase_path):
@@ -53,6 +58,10 @@ class MetaDataBase:
                 raise ValueError("datasets dir not found at `path`", path)
             if not os.path.exists(self._tables_dir):
                 raise ValueError("cannot find lookup_tables dir at `path`", path)
+            if not os.path.exists(self._dataset_char_dir):
+                raise ValueError("cannot find dataset_characterizations dir at `path`", path)
+            if not os.path.exists(self._config_char_dir):
+                raise ValueError("cannot find config_characterizations dir at `path`", path)
 
             self._md_table = MetaDataLookupTable(self._tables_dir)
             self._mdbase = pd.read_csv(self._mdbase_path, dtype={"dataset_id": "int64", "pipeline_id": "int64"})
@@ -65,6 +74,8 @@ class MetaDataBase:
         self._datasets_dir = os.path.join(path, name, "datasets")
         self._tables_dir = os.path.join(path, name, "lookup_tables")
         self._logs_dir = os.path.join(path, name, "logs")
+        self._dataset_char_dir = os.path.join(path, "dataset_characterizations")
+        self._config_char_dir = os.path.join(path, "config_characterizations")
 
         os.mkdir(os.path.join(path, name))
         os.mkdir(self._pipelines_dir)
@@ -73,6 +84,8 @@ class MetaDataBase:
         os.mkdir(self._datasets_dir)
         os.mkdir(self._tables_dir)
         os.mkdir(self._logs_dir)
+        os.mkdir(self._dataset_char_dir)
+        os.mkdir(self._config_char_dir)
 
         # create empty metadata csv files
         df_pipeline_table = pd.DataFrame(data={"pipeline": list(), "pipeline_id": list()})
@@ -517,7 +530,7 @@ class MetaDataBase:
 
         Arguments
         ---------
-        datasets, List of integers,
+        datasets: List of integers,
             ids of datasets that should be temporarily removed from the metadatabase views.
         """
         self._set_partial_view_paths()
@@ -601,3 +614,124 @@ class MetaDataBase:
         self._tmp_datasets_table = os.path.join(self._tmp_dir, "lookup_table_datasets.csv")
         self._tmp_mdbase_table = os.path.join(self._tmp_dir, "metadatabase.csv")
         self._tmp_pipelines_table = os.path.join(self._tmp_dir, "lookup_table_pipelines.csv")
+
+    def add_dataset_characterizations(self, characterizations: List[Tuple[List[int | float], List[str]]], name: str) -> None:
+        """Add dataset `characterizations` to the mdbase, referring to them using `name`.
+        The user should note that this method can also add dataset characterizations to already existing characterizations,
+        but it is not possible to overwrite them. Hence, a ValueError is thrown if `characterizations` contains dataset ids for which
+        characterization with `name` already exist.
+
+        Arguments
+        ---------
+        characterizations: List[Tuple[List[int | float], List[str]]]
+            A list of tuples, where each tuple represents a dataset characterization.
+            The first element in the tuple refers to the dataset_id in `mdbase`,
+            The second element is the purely numeric vector representing the dataset,
+            The last element contains the names of the dimensions/features, which could be number-like if they have no meaning.
+        name: string,
+            the name by which the characterizations should be referenced and stored.
+        """
+        # check if datasets are present in mdbase
+        new_dataset_ids = [int(entry[0]) for entry in characterizations]
+        mdbase_dataset_ids = self.list_datasets(by="id")
+        non_existing_datasets = [id for id in new_dataset_ids if id not in mdbase_dataset_ids]
+        if len(non_existing_datasets) != 0:
+            raise ValueError("Cannot add characterizations, because some datasets do not exist (ids: {})".format(non_existing_datasets))
+
+        # handling existing dataset ids
+        df_chars = None
+        file_name = "{}.csv".format(name)
+        char_file = os.path.join(self._dataset_char_dir, file_name)
+        if file_name in os.listdir(self._dataset_char_dir):  # extend this characterization method with new datasets
+            existing_dataset_ids = [int(id) for id in list(pd.read_csv(char_file)["dataset_id"])]
+            overlap_ids = [id for id in new_dataset_ids if id in existing_dataset_ids]
+            print("overlap_ids: ", overlap_ids)
+            if len(overlap_ids) != 0:
+                raise ValueError("characterizations cannot be added, because there is overlap between already existing datasets with ids: ".format(overlap_ids))
+            df_chars = pd.read_csv(char_file)
+
+        # put new characterizations into dataframe format, extend df_chars which could be empty or composed of existing characterizations
+        for i, entry in enumerate(characterizations):
+            names = entry[1][1]
+            values = entry[1][0]
+            if i == 0:
+                df_chars = pd.DataFrame(columns=["dataset_id"] + names)
+            if names != list(df_chars.columns)[1:]:
+                raise ValueError("not all characterization entries have the same names or dimensionality thereof, names should be equal")
+            df_chars.loc[len(df_chars.index)] = [int(entry[0])] + values
+        df_chars.to_csv(char_file, index=False)
+
+    def list_dataset_characterizations(self, characterization_names: Optional[List[str]] = None, dataset_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
+        """Shows which characterizations are stored for which datasets, can filter on characterization_name and dataset_ids.
+
+        Arguments
+        ---------
+        characterization_names: Optional[List[str]],
+            optional list of characterization names (as stored using `name` in `add_dataset_characterizations`) to filter on.
+        dataset_ids: Optional[List[int]],
+            optional list of dataset_ids to filter on.
+        """
+        stored_characterizations = []
+        for f in os.listdir(self._dataset_char_dir):
+            char_name = f.split(".")[0]
+            if characterization_names is not None:  # filter on characterization names
+                if char_name not in characterization_names:
+                    continue
+            char_path = os.path.join(self._dataset_char_dir, f)
+            stored_ids = [int(id) for id in list(pd.read_csv(char_path)["dataset_id"])]
+            if dataset_ids is not None:  # filter on dataset ids
+                stored_ids = [id for id in stored_ids if id in dataset_ids]
+            if len(stored_ids) == 0:  # filtered all ids out
+                continue
+            stored_characterizations.append((char_name, stored_ids))
+        return stored_characterizations
+
+    def get_dataset_characterizations(self, characterization_name: str = None, dataset_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
+        """Returns stored characterizations, can filter on characterization_name and dataset_ids.
+
+        Arguments
+        ---------
+        characterization_names:str,
+            Name of characterization method for which to get the characterizations (as stored using `name` in `add_dataset_characterizations`).
+        dataset_ids: Optional[List[int]],
+            optional list of dataset_ids to filter on.
+
+        Returns
+        -------
+        metadatabase_characterizations: List[Tuple[int, List[int | float]]],
+            A list of tuples, where each tuple represents a dataset characterization.
+            The first element in the tuple refers to the dataset_id in `mdbase`,
+            The second element is the purely numeric vector representing the dataset,
+        """
+        # check whether characterization filter is valid
+        available_characterizations = []
+        for f in os.listdir(self._dataset_char_dir):
+            available_characterizations.append(f.split(".")[0])
+        if characterization_name not in available_characterizations:
+            raise ValueError("The selected characterization `{}` is not stored in the mdbase. Stored options are: {}".format(characterization_name, available_characterizations))
+
+        # get the characterizations file
+        file_path = os.path.join(self._dataset_char_dir, characterization_name + ".csv")
+        char_df = pd.read_csv(file_path)
+
+        # check whether dataset filter is valid:
+        if dataset_ids is not None:
+            non_existing_datasets = [id for id in dataset_ids if id not in self.list_datasets(by="id")]
+            if len(non_existing_datasets) != 0:
+                raise ValueError("Some dataset ids to select on are not stored in the mdbase, namely: {}".format(non_existing_datasets))
+        else:
+            dataset_ids = [int(val) for val in char_df["dataset_id"].to_list()]
+
+        # get characterizations in proper format
+        characterizations = []
+        for id in dataset_ids:
+            if id not in [int(val) for val in list(char_df["dataset_id"].values)]:  # dataset id to select not in characterization
+                raise ValueError("Cannot include dataset with id: {} for characterization: {}. It does not exist in the metadatabase.".format(id, characterization_name))
+            char_values = list(float(val) for val in char_df[char_df["dataset_id"] == id].values[0])
+            characterizations.append((id, char_values))
+
+        return characterizations
+
+    # TODO add functionality for pipeline characterizations
+
+    # TODO when both pipeline and dataset characterizations are incorporated in the mdbase, then should also do them in partial view
