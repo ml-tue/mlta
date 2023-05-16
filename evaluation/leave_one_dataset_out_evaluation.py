@@ -8,6 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from evaluation import BaseEvaluation
 from metadatabase import MetaDataBase
 from metalearners import BaseLearner
+from utilities import TimeoutException, time_limit
 
 
 class LeaveOneDatasetOutEvaluation(BaseEvaluation):
@@ -52,6 +53,8 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         metalearner: BaseLearner,
         dataset_characterizations: Optional[List[Tuple[int, List[int | float]]]],
         config_characterizations: Optional[List[Tuple[int, List[int | float]]]],
+        dataset_ids: Optional[List[int]] = None,
+        max_time: Optional[int] = None,
     ) -> List[Tuple[int, List[float | None]]]:
         """Evaluates the metalearner using this evaluation method, potentially using pre-computed dataset and configuration characterizations.
         Should store the evaluation results in self._evaluation_results to avoid losing any results""
@@ -72,6 +75,13 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
             A list of tuples, where each tuple represents a configuration characterization.
                 The first element in the tuple refers to the pipeline_id in `mdbase`,
                 The second element is the vector representing the configuration (pipeline).
+        dataset_ids: list of integers,
+            Optional specification of dataset_ids to evaluate. Still all datasets can be used from mdbase in the online phase.
+            But only the specified datasets ids are evaluated and returned.
+            Intended use is for creating batches or when a run was interrupted midway and must restart but without re-doing evaluations.
+        max_time: integer,
+            Optional argument to specify the maximum time (in seconds) 1 configuration evaluation can take.
+            Thus with a default of 600 seconds, a total of 25 configurations may still take at most 250 minutes per dataset.
 
         Returns
         -------
@@ -84,7 +94,8 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         """
         evaluation_results = []
 
-        dataset_ids = mdbase.list_datasets(by="id")
+        if dataset_ids is None:
+            dataset_ids = mdbase.list_datasets(by="id")
         for did in dataset_ids:
             df_X, df_y = mdbase.get_dataset(did, type="dataframe")  # get data for online_phase
             datasets_to_keep = mdbase.list_datasets(by="id")
@@ -119,9 +130,17 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                     for configuration in metalearner.get_top_configurations(n=self._n_configs):
                         if configuration is None:
                             dataset_eval_results.append(None)
-                        else:  # TODO: do I want a time limit on evaluation fit time?, otherwise it could perhaps never finish?
+                        else:
                             try:
-                                configuration.fit(X_train, y_train)  # error MemoryError, should catch that too
+                                if time_limit is not None:
+                                    try:  #  nested try for time_limit if necessary
+                                        with time_limit(max_time):
+                                            configuration.fit(X_train, y_train)  # error MemoryError, should catch that too
+                                    except TimeoutException as e:
+                                        if self._verbosity == 1:
+                                            print("Evaluating configuration timed out with {} seconds".format(max_time))
+                                else:
+                                    configuration.fit(X_train, y_train)
                             except ValueError as e:
                                 if self._verbosity == 1:
                                     print("The configuration could not be fitted, incompatible pipeline. Hence added as `None` to results of dataset {}".format(did))
