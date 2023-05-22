@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -139,6 +140,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                                     except TimeoutException as e:
                                         if self._verbosity == 1:
                                             print("Evaluating configuration timed out with {} seconds".format(max_time))
+                                        continue
                                 else:
                                     configuration.fit(X_train, y_train)
                             except ValueError as e:
@@ -174,7 +176,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
             # avg out the scores
 
             if self._verbosity == 1:
-                print("Done with dataset with id: {}".format(did))
+                print("Done with dataset with id: {} at {}".format(did, str(datetime.now())))
             metalearner.clear_configurations()  # reset the metalearner's memory for next dataset
             mdbase.restore_view()
 
