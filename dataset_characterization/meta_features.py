@@ -1,5 +1,5 @@
 import math
-from typing import List
+from typing import List, Tuple
 
 import pandas as pd
 from numpy import mean, percentile, std
@@ -29,7 +29,7 @@ class WistubaMetaFeatures(BaseDatasetCharacterization):
     def __init__(self):
         super().__init__()
 
-    def compute(self, X: pd.DataFrame, y: pd.DataFrame) -> List[int | float]:
+    def compute(self, X: pd.DataFrame, y: pd.DataFrame) -> Tuple[List[int | float], List[str]]:
         """Computes and returns a characterization using Wistuba Meta-features for the dataset given by X and y,
         specifically: Get the meta-features as defined in the paper by Wistuba et al. (2016):
             'Two-stage transfer surrogate model for automatic hyperparameter optimization'
@@ -43,8 +43,8 @@ class WistubaMetaFeatures(BaseDatasetCharacterization):
             Targets used during meta-feature computation.
         Returns
         -------
-        characterization: List[int | float],
-            A list of numerical values characterizating the dataset (given by `X` and `y`)
+        characterization: Tuple[List[int | float], List[str]],
+            A tuple consisting of lists of feature values and feature names respectively
         """
 
         wistuba_features = [
@@ -93,7 +93,7 @@ class FeurerMetaFeatures(BaseDatasetCharacterization):
     def __init__(self):
         super().__init__()
 
-    def compute(self, X: pd.DataFrame, y: pd.DataFrame) -> List[int | float]:
+    def compute(self, X: pd.DataFrame, y: pd.DataFrame) -> Tuple[List[int | float], List[str]]:
         """Computes and returns a characterization using Feurer Meta-features for the dataset given by X and y,
         specifically: Get the meta-features as defined in the paper by Feurer et al. (2014):
             'Using Meta-Learning to Initialize Bayesian Optimization of Hyperparameters'
@@ -107,8 +107,8 @@ class FeurerMetaFeatures(BaseDatasetCharacterization):
             Targets used during meta-feature computation.
         Returns
         -------
-        characterization: List[int | float],
-            A list of numerical values characterizating the dataset (given by `X` and `y`)
+        characterization: Tuple[List[int | float], List[str]],
+            A tuple consisting of lists of feature values and feature names respectively
         """
         # first compute pyMFE meta-features
         feurer_features_sum = [
