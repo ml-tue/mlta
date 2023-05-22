@@ -20,3 +20,5 @@ metadatabase_openml18cc
 test.ipynb
 gama
 metadatabase_openml18cc - Copy
+gama_logs
+utilities/dataset2vec/__pycache__

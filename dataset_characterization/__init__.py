@@ -1,2 +1,3 @@
 from dataset_characterization.base_dataset_characterization import BaseDatasetCharacterization
+from dataset_characterization.dataset2vec import PreTrainedDataset2Vec
 from dataset_characterization.meta_features import FeurerMetaFeatures, WistubaMetaFeatures
