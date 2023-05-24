@@ -25,13 +25,15 @@ class BaseConfigurationCharacterization:
         """
         raise NotImplementedError("Method `compute` must be implemented by child class.")
 
-    def compute_mdbase_characterizations(self, mdbase: MetaDataBase) -> List[Tuple[int, List[int | float | str]]]:
+    def compute_mdbase_characterizations(self, mdbase: MetaDataBase, verbosity: int = 1) -> List[Tuple[int, List[int | float | str]]]:
         """Computes and returns the characterizations for all configuration (pipes) in the specified metadatabase.
 
         Arguments
         ---------
         mdbase: MetaDataBase,
             metadatabase of prior experiences, as created in metadatabase.MetaDataBase class.
+        verbosity: int,
+            if set to 1 then an update is given every 1000 pipes
 
         Returns
         -------
@@ -40,4 +42,11 @@ class BaseConfigurationCharacterization:
             The first element in the tuple refers to the pipeline_id in `mdbase`,
             The second element is the vector representing the configuration (pipeline),
         """
-        raise NotImplementedError("Method `compute_mdbase_characterizations` must be implemented by child class.")
+        config_characterizations = []
+        for pipe_id in mdbase.list_pipelines(by="id"):
+            pipe = mdbase.get_sklearn_pipeline(pipeline_id=pipe_id, is_classification=True)
+            config_characterizations.append((pipe_id, self.compute(pipe)))
+            del pipe
+            if pipe_id % 1000 == 0:
+                print(f"Reached pipe {pipe_id}")
+        return config_characterizations

@@ -1,1 +1,2 @@
+from configuration_characterization.algorithm_propositionalization import AlgorithmsPropositionalization
 from configuration_characterization.base_configuration_characterization import BaseConfigurationCharacterization
