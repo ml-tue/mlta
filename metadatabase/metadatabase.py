@@ -386,9 +386,22 @@ class MetaDataBase:
         """
         return self._md_table.list_pipelines(by)
 
-    def get_sklearn_pipeline(self, pipeline_id: int, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.DataFrame | pd.Series, is_classification: bool) -> Pipeline:
+    def get_sklearn_pipeline(
+        self,
+        pipeline_id: int,
+        X: np.ndarray | pd.DataFrame | None = None,
+        y: np.ndarray | pd.DataFrame | pd.Series | None = None,
+        is_classification: bool = True,
+        include_prepro: bool = False,
+    ) -> Pipeline:
         """Returns a sklearn.pipeline.Pipeline from the metadatabase representing `pipeline_id`
-        Additionally, it loads the imports that are necessary for executing the pipeline"""
+        Additionally, it loads the imports that are necessary for executing the pipeline.
+        You can specify if you want the preprocessing steps too, if they are desired X and y should be given.
+        """
+        if include_prepro:
+            if X is None or y is None:
+                raise ValueError("X and Y should be specified if include_prepo is True")
+
         # prepare loading the pipeline without preprocessing
         dir_id = str(hash_pipe_id_to_dir(pipeline_id))
         pipeline_path = os.path.join(str(self._pipelines_dir), dir_id, "pipeline_{}.py".format(pipeline_id))
@@ -399,11 +412,17 @@ class MetaDataBase:
         module = importlib.util.module_from_spec(spec)  # type: ignore
         spec.loader.exec_module(module)
 
-        pipe_wo_prepro = module.pipeline
-        prepro_pipe = Pipeline(self._get_preprocessing_steps(X, y, is_classification))
-        pipeline = Pipeline(prepro_pipe.steps + pipe_wo_prepro.steps)
-        self._load_pipeline_imports(pipeline)
-        return pipeline
+        # get the pipeline and load imports
+        if include_prepro:
+            pipe_wo_prepro = module.pipeline
+            prepro_pipe = Pipeline(self._get_preprocessing_steps(X, y, is_classification))
+            pipeline = Pipeline(prepro_pipe.steps + pipe_wo_prepro.steps)
+            self._load_pipeline_imports(pipeline)
+            return pipeline
+        else:
+            pipe_wo_prepro = module.pipeline
+            self._load_pipeline_imports(pipe_wo_prepro)
+            return pipe_wo_prepro
 
     def _load_pipeline_imports(self, pipeline: Pipeline) -> None:
         # import certain modules to enable using the pipeline
@@ -615,7 +634,7 @@ class MetaDataBase:
         self._tmp_mdbase_table = os.path.join(self._tmp_dir, "metadatabase.csv")
         self._tmp_pipelines_table = os.path.join(self._tmp_dir, "lookup_table_pipelines.csv")
 
-    def add_dataset_characterizations(self, characterizations: List[Tuple[List[int | float], List[str]]], name: str) -> None:
+    def add_dataset_characterizations(self, characterizations: List[Tuple[int, List[int | float], List[str]]], name: str) -> None:
         """Add dataset `characterizations` to the mdbase, referring to them using `name`.
         The user should note that this method can also add dataset characterizations to already existing characterizations,
         but it is not possible to overwrite them. Hence, a ValueError is thrown if `characterizations` contains dataset ids for which
@@ -623,7 +642,7 @@ class MetaDataBase:
 
         Arguments
         ---------
-        characterizations: List[Tuple[List[int | float], List[str]]]
+        characterizations: List[Tuple[int, List[int | float], List[str]]]
             A list of tuples, where each tuple represents a dataset characterization.
             The first element in the tuple refers to the dataset_id in `mdbase`,
             The second element is the purely numeric vector representing the dataset,
