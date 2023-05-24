@@ -558,6 +558,8 @@ class MetaDataBase:
 
         os.mkdir(self._tmp_dir)
         os.mkdir(self._tmp_datasets_dir)
+        os.mkdir(self._tmp_dataset_char_dir)
+        os.mkdir(self._tmp_config_char_dir)
 
         # copy over the datasets we do not want, and remove them accordingly
         unwanted_dataset_ids = [id for id in self.list_datasets(by="id") if id not in datasets]
@@ -592,6 +594,24 @@ class MetaDataBase:
         df_pipes.to_csv(src_pipelines_table)
         self._md_table = MetaDataLookupTable(path=str(self._tables_dir))  # update for both datasets and pipelines table
 
+        # copy over the entire dataset_characterizations and adapt the remaining file
+        for file in os.listdir(self._dataset_char_dir):
+            src_path = os.path.join(self._dataset_char_dir, file)
+            dst_path = os.path.join(self._tmp_dataset_char_dir, file)
+            shutil.copyfile(src_path, dst_path)
+            df_dataset_char = pd.read_csv(src_path)
+            df_dataset_char = df_dataset_char[df_dataset_char["dataset_id"].isin(datasets)]  # only keep dataset characterizations of partial view datasets
+            df_dataset_char.to_csv(src_path, index=False)
+
+        # copy over the entire pipeline_characterizations
+        for file in os.listdir(self._config_char_dir):
+            src_path = os.path.join(self._config_char_dir, file)
+            dst_path = os.path.join(self._tmp_config_char_dir, file)
+            shutil.copyfile(src_path, dst_path)
+            df_config_char = pd.read_csv(src_path)
+            df_config_char = df_config_char[df_config_char["pipe_id"].isin(remaining_pipes)]  # only pipes with evaluations on `datasets``
+            df_config_char.to_csv(src_path, index=False)
+
     def restore_view(self) -> None:
         """Restores the view on the metadatabase view created with `partial_datasets_view()`."""
         # need to ensure all paths are set, because it enables usage of function when a MetaDataBase object was deleted
@@ -623,12 +643,34 @@ class MetaDataBase:
         os.remove(dst_path)  # remove the adapted `metadatabase.csv`
         shutil.copyfile(src_path, dst_path)
 
+        # restore dataset characterizations
+        for file in os.listdir(self._tmp_dataset_char_dir):
+            src_path = os.path.join(self._tmp_dataset_char_dir, file)
+            dst_path = os.path.join(self._dataset_char_dir, file)
+            os.remove(dst_path)
+            shutil.copyfile(src_path, dst_path)
+
+        # restore pipeline characterizations
+        for file in os.listdir(self._tmp_config_char_dir):
+            src_path = os.path.join(self._tmp_config_char_dir, file)
+            dst_path = os.path.join(self._config_char_dir, file)
+            os.remove(dst_path)
+            shutil.copyfile(src_path, dst_path)
+
+        # copy over the entire pipeline_characterizations
+        for file in os.listdir(self._config_char_dir):
+            src_path = os.path.join(self._config_char_dir, file)
+            dst_path = os.path.join(self._tmp_config_char_dir, file)
+            shutil.copyfile(src_path, dst_path)
+
         shutil.rmtree(self._tmp_dir)
 
     def _set_partial_view_paths(self) -> None:
         """Method setting paths that are used in `partial_datasets_view()` and `restore_view()`"""
         self._root_dir = os.path.split(str(self._datasets_dir))[0]
         self._tmp_dir = os.path.join(self._root_dir, "tmp")
+        self._tmp_dataset_char_dir = os.path.join(self._tmp_dir, "dataset_characterizations")
+        self._tmp_config_char_dir = os.path.join(self._tmp_dir, "config_characterizations")
         self._tmp_datasets_dir = os.path.join(self._tmp_dir, "datasets")
         self._tmp_datasets_table = os.path.join(self._tmp_dir, "lookup_table_datasets.csv")
         self._tmp_mdbase_table = os.path.join(self._tmp_dir, "metadatabase.csv")
@@ -859,5 +901,3 @@ class MetaDataBase:
             characterizations.append((id, char_values))
 
         return characterizations
-
-    # TODO when both pipeline and dataset characterizations are incorporated in the mdbase, then should also do them in partial view
