@@ -860,5 +860,4 @@ class MetaDataBase:
 
         return characterizations
 
-
     # TODO when both pipeline and dataset characterizations are incorporated in the mdbase, then should also do them in partial view
