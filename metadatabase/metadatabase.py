@@ -664,7 +664,6 @@ class MetaDataBase:
         if file_name in os.listdir(self._dataset_char_dir):  # extend this characterization method with new datasets
             existing_dataset_ids = [int(id) for id in list(pd.read_csv(char_file)["dataset_id"])]
             overlap_ids = [id for id in new_dataset_ids if id in existing_dataset_ids]
-            print("overlap_ids: ", overlap_ids)
             if len(overlap_ids) != 0:
                 raise ValueError("characterizations cannot be added, because there is overlap between already existing datasets with ids: ".format(overlap_ids))
             df_chars = pd.read_csv(char_file)
@@ -673,7 +672,7 @@ class MetaDataBase:
         for i, entry in enumerate(characterizations):
             names = entry[1][1]
             values = entry[1][0]
-            if i == 0:
+            if i == 0 and file_name not in os.listdir(self._dataset_char_dir):
                 df_chars = pd.DataFrame(columns=["dataset_id"] + names)
             if names != list(df_chars.columns)[1:]:
                 raise ValueError("not all characterization entries have the same names or dimensionality thereof, names should be equal")
@@ -751,6 +750,115 @@ class MetaDataBase:
 
         return characterizations
 
-    # TODO add functionality for pipeline characterizations
+    def add_configuration_characterizations(self, characterizations: List[Tuple[int, List[int | float | str]]], name: str) -> None:
+        """Add configuration `characterizations` to the mdbase, referring to them using `name`.
+        The user should note that this method can also add configuration characterizations to already existing characterizations methods,
+        but it is not possible to overwrite them for the same dataset.
+        Hence, a ValueError is thrown if `characterizations` contains dataset ids for which characterization with `name` already exist.
+
+        Arguments
+        ---------
+        characterizations: List[Tuple[int, List[int | float | str]]]
+            A list of tuples, where each tuple represents a configuration characterization.
+            The first element in the tuple refers to the pipe_id in `mdbase`,
+            The second element is the list characterizing the pipeline/configuration with the specified pipe_id.
+        name: string,
+            Name by which configuration characterizations should be referenced and stored. (use the method name and options if applicable)
+        """
+        # check if pipes are present in mdbase
+        new_pipe_ids = [int(entry[0]) for entry in characterizations]
+        mdbase_pipe_ids = self.list_pipelines(by="id")
+        non_existing_pipes = [id for id in new_pipe_ids if id not in mdbase_pipe_ids]
+        if len(non_existing_pipes) != 0:
+            raise ValueError("Cannot add characterizations, because some pipelines do not exist (ids: {})".format(non_existing_pipes))
+
+        df_config_chars = None
+        file_name = "{}.csv".format(name)
+        char_file = os.path.join(self._config_char_dir, file_name)
+        if file_name in os.listdir(self._config_char_dir):  # extend this characterization method with new datasets
+            existing_pipe_ids = [int(id) for id in list(pd.read_csv(char_file)["pipe_id"])]
+            overlap_ids = [id for id in new_pipe_ids if id in existing_pipe_ids]
+            if len(overlap_ids) != 0:
+                raise ValueError("characterizations cannot be added, because there is overlap between already existing pipelines with ids: {}".format(overlap_ids))
+            df_config_chars = pd.read_csv(char_file)
+
+        for i, entry in enumerate(characterizations):
+            values = entry[1]
+            if i == 0 and file_name not in os.listdir(self._config_char_dir):
+                df_config_chars = pd.DataFrame(columns=["pipe_id"] + [f"dim_{i}" for i in range(0, len(values))])
+            df_config_chars.loc[len(df_config_chars.index)] = [int(entry[0])] + values
+        df_config_chars.to_csv(char_file, index=False)
+
+    def list_configuration_characterizations(self, characterization_names: Optional[List[str]] = None, pipe_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
+        """Shows which characterizations are stored for which pipelines, can filter on `characterization_names` and `pipe_ids`.
+
+        Arguments
+        ---------
+        characterization_names: Optional[List[str]],
+            Optional list of characterization names (as stored using `name` in `add_configuration_characterizations`) to filter on.
+        pipe_ids: Optional[List[int]],
+            Pptional list of pipe_id to filter on.
+        """
+        stored_characterizations = []
+        for f in os.listdir(self._config_char_dir):
+            char_name = f.split(".")[0]
+            if characterization_names is not None:  # filter on characterization names
+                if char_name not in characterization_names:
+                    continue
+            char_path = os.path.join(self._config_char_dir, f)
+            stored_ids = [int(id) for id in list(pd.read_csv(char_path)["pipe_id"])]
+            if pipe_ids is not None:  # filter on pipelines ids
+                stored_ids = [id for id in stored_ids if id in pipe_ids]
+            if len(stored_ids) == 0:  # filtered all ids out
+                continue
+            stored_characterizations.append((char_name, stored_ids))
+        return stored_characterizations
+
+    def get_configuration_characterizations(self, characterization_name: str = None, pipe_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
+        """Returns stored characterizations, can filter on characterization_name and dataset_ids.
+
+        Arguments
+        ---------
+        characterization_names:str,
+            Name of characterization method for which to get the characterizations (as stored using `name` in `add_configuration_characterizations`).
+        pipe_ids: Optional[List[int]],
+            optional list of pipe_id to filter on.
+
+        Returns
+        -------
+        metadatabase_characterizations: List[Tuple[int, List[int | float]]],
+            A list of tuples, where each tuple represents a configuration characterization.
+            The first element in the tuple refers to the pipe_id in `mdbase`,
+            The second element is the list characterizing the pipeline/configuration with the specified pipe_id.
+        """
+        # check whether characterization filter is valid
+        available_characterizations = []
+        for f in os.listdir(self._config_char_dir):
+            available_characterizations.append(f.split(".")[0])
+        if characterization_name not in available_characterizations:
+            raise ValueError("The selected characterization `{}` is not stored in the mdbase. Stored options are: {}".format(characterization_name, available_characterizations))
+
+        # get the characterizations file
+        file_path = os.path.join(self._config_char_dir, characterization_name + ".csv")
+        char_df = pd.read_csv(file_path)
+
+        # check whether pipeline filter is valid:
+        if pipe_ids is not None:
+            non_existing_pipes = [id for id in pipe_ids if id not in self.list_pipelines(by="id")]
+            if len(non_existing_pipes) != 0:
+                raise ValueError("Some pipe ids to select on are not stored in the mdbase, namely: {}".format(non_existing_pipes))
+        else:
+            pipe_ids = [int(val) for val in char_df["pipe_id"].to_list()]
+
+        # get characterizations in proper format
+        characterizations = []
+        for id in pipe_ids:
+            if id not in [int(val) for val in list(char_df["pipe_id"].values)]:  # pipe id to select not in characterization
+                raise ValueError("Cannot include pipe with id: {} for characterization: {}. It does not exist in the metadatabase.".format(id, characterization_name))
+            char_values = list(val for val in char_df[char_df["pipe_id"] == id].values[0])[1:]
+            characterizations.append((id, char_values))
+
+        return characterizations
+
 
     # TODO when both pipeline and dataset characterizations are incorporated in the mdbase, then should also do them in partial view
