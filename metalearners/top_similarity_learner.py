@@ -1,6 +1,5 @@
 import os
 from typing import List
-from xmlrpc.client import Boolean
 
 import numpy as np
 import pandas as pd
@@ -135,7 +134,7 @@ class TopSimilarityLearner(BaseSimilarityLearner):
                         for pipe_id in top_solution_ids:
                             if self.get_number_of_configurations() >= total_n_configs:
                                 continue
-                            pipe = self._mdbase.get_sklearn_pipeline(pipe_id, X, y, True)
+                            pipe = self._mdbase.get_sklearn_pipeline(pipe_id, X, y, True, True)
                             # Must expect not all pipelines may work, e.g. feature selectors may remove all features
                             # therefore try fitting pipe, if it does not work do not consider it, fill it in with while loop later
                             if evaluate_recommendations:
