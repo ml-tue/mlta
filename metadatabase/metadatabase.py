@@ -808,8 +808,8 @@ class MetaDataBase:
             Name by which configuration characterizations should be referenced and stored. (use the method name and options if applicable)
         """
         # check if pipes are present in mdbase
-        new_pipe_ids = [int(entry[0]) for entry in characterizations]
-        mdbase_pipe_ids = self.list_pipelines(by="id")
+        new_pipe_ids = [entry[0] for entry in characterizations]
+        mdbase_pipe_ids = set(self.list_pipelines(by="id"))
         non_existing_pipes = [id for id in new_pipe_ids if id not in mdbase_pipe_ids]
         if len(non_existing_pipes) != 0:
             raise ValueError("Cannot add characterizations, because some pipelines do not exist (ids: {})".format(non_existing_pipes))
@@ -824,12 +824,21 @@ class MetaDataBase:
                 raise ValueError("characterizations cannot be added, because there is overlap between already existing pipelines with ids: {}".format(overlap_ids))
             df_config_chars = pd.read_csv(char_file)
 
+        # First cast data into dictionary, then into dataframe, and if necessary add to (other) prior dataframe.
+        char_dict = {}  # stores the new lines to add to pandas dataframe
         for i, entry in enumerate(characterizations):
-            values = entry[1]
-            if i == 0 and file_name not in os.listdir(self._config_char_dir):
-                df_config_chars = pd.DataFrame(columns=["pipe_id"] + [f"dim_{i}" for i in range(0, len(values))])
-            df_config_chars.loc[len(df_config_chars.index)] = [int(entry[0])] + values
-        df_config_chars.to_csv(char_file, index=False)
+            char_line = [entry[0]]  # line to store, adapt later
+            char_line.extend(entry[1])
+            char_dict[f"{i}"] = char_line
+        column_names = ["pipe_id"] + [f"dim_{i}" for i in range(0, len(char_dict["0"]) - 1)]
+        df_new_config_chars = pd.DataFrame.from_dict(char_dict, orient="index", columns=column_names)
+        df_out = None
+        if file_name in os.listdir(self._config_char_dir):  # extend dataframe
+            df_out = pd.concat([df_config_chars, df_new_config_chars], ignore_index=True)
+        else:
+            df_out = df_new_config_chars
+
+        df_out.to_csv(char_file, index=False)
 
     def list_configuration_characterizations(self, characterization_names: Optional[List[str]] = None, pipe_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
         """Shows which characterizations are stored for which pipelines, can filter on `characterization_names` and `pipe_ids`.
@@ -886,18 +895,26 @@ class MetaDataBase:
 
         # check whether pipeline filter is valid:
         if pipe_ids is not None:
-            non_existing_pipes = [id for id in pipe_ids if id not in self.list_pipelines(by="id")]
+            pipe_id_set = set(self.list_pipelines(by="id"))
+            non_existing_pipes = [id for id in pipe_ids if id not in pipe_id_set]
             if len(non_existing_pipes) != 0:
                 raise ValueError("Some pipe ids to select on are not stored in the mdbase, namely: {}".format(non_existing_pipes))
         else:
             pipe_ids = [int(val) for val in char_df["pipe_id"].to_list()]
 
         # get characterizations in proper format
-        characterizations = []
-        for id in pipe_ids:
-            if id not in [int(val) for val in list(char_df["pipe_id"].values)]:  # pipe id to select not in characterization
+        characterizations = [()] * len(pipe_ids)
+        np_chars = char_df.to_numpy()  # have numpy interface for speed, with dictionary to quickly find row index for pipe id
+        pipe_id_to_row = {}
+        for i in range(0, np_chars.shape[0]):
+            pipe_id = np_chars[i][0]
+            pipe_id_to_row[pipe_id] = i
+
+        stored_ids = set([int(val) for val in list(char_df["pipe_id"].values)])
+        for i, id in enumerate(pipe_ids):
+            if id not in stored_ids:  # pipe id to select not in characterization
                 raise ValueError("Cannot include pipe with id: {} for characterization: {}. It does not exist in the metadatabase.".format(id, characterization_name))
-            char_values = list(val for val in char_df[char_df["pipe_id"] == id].values[0])[1:]
-            characterizations.append((id, char_values))
+            char_values = np_chars[pipe_id_to_row[id], 1:].tolist()
+            characterizations[i] = (id, char_values)
 
         return characterizations
