@@ -6,6 +6,7 @@ from metalearners.base_learner import BaseLearner
 
 class BaseCharacterizationLearner(BaseLearner):
     def __init__(self):
+        super().__init__()
         self._dataset_characterizations: Optional[List[Tuple[int, List[int | float]]]] = None
         self._config_characterizations: Optional[List[Tuple[int, List[int | float | str]]]] = None
 

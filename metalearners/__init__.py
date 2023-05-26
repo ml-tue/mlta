@@ -2,3 +2,4 @@ from metalearners.base_characterization_learner import BaseCharacterizationLearn
 from metalearners.base_learner import BaseLearner
 from metalearners.base_similarity_learner import BaseSimilarityLearner
 from metalearners.top_similarity_learner import TopSimilarityLearner
+from metalearners.top_xgboost_ranked import TopXGBoostRanked
