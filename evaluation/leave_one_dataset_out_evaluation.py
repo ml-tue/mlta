@@ -1,4 +1,5 @@
 from datetime import datetime
+from inspect import getfullargspec
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -21,7 +22,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         max_time: int = 300,
         metric: str = "neg_log_loss",
         n_jobs: int = 1,
-        verbosity: int = 1,
+        verbosity: int = 2,
     ) -> None:
         super().__init__(n_configs, max_time, metric, n_jobs, verbosity)
         """Initialize the LeaveOneDatasetOutEvaluation procedure, specifying its main static options
@@ -43,6 +44,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
             the number of threads the `metalearner` is allowed to use. Default is 1.
         verbosity: int,
             if set to 1, then prints out dataset_id when done with dataset
+            If set to 2, then also prints out when done with the online and offline phase
         """
         self._validation_strategy = validation_strategy
         self._test_size = test_size
@@ -56,6 +58,7 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         config_characterizations: Optional[List[Tuple[int, List[int | float]]]],
         dataset_ids: Optional[List[int]] = None,
         max_time: Optional[int] = None,
+        **metalearner_kwargs,
     ) -> List[Tuple[int, List[float | None]]]:
         """Evaluates the metalearner using this evaluation method, potentially using pre-computed dataset and configuration characterizations.
         Should store the evaluation results in self._evaluation_results to avoid losing any results""
@@ -83,6 +86,8 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         max_time: integer,
             Optional argument to specify the maximum time (in seconds) 1 configuration evaluation can take.
             Thus with a default of 600 seconds, a total of 25 configurations may still take at most 250 minutes per dataset.
+        metalearner_kwargs:
+            If a keyword in metalearner_kwargs is present in the offline phase it is passed there, and similar for the online phase.
 
         Returns
         -------
@@ -94,6 +99,17 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
 
         """
         evaluation_results = []
+        # get (possible) metalearner kwargs for offline and online phase
+        online_phase_kwargs = {}
+        offline_phase_kwargs = {}
+        if metalearner_kwargs is not None:
+            online_args = getfullargspec(metalearner.online_phase).args
+            offline_args = getfullargspec(metalearner.offline_phase).args
+            for param in metalearner_kwargs:
+                if param in online_args:
+                    online_phase_kwargs[param] = metalearner_kwargs[param]
+                if param in offline_args:
+                    offline_phase_kwargs[param] = metalearner_kwargs[param]
 
         if dataset_ids is None:
             dataset_ids = mdbase.list_datasets(by="id")
@@ -111,17 +127,25 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                         if characterization[0] != did:
                             selected_characterizations.append(characterization)
                     if config_characterizations != None:
-                        metalearner.offline_phase(mdbase=mdbase, dataset_characterizations=selected_characterizations, config_characterizations=config_characterizations)
+                        metalearner.offline_phase(
+                            mdbase=mdbase, dataset_characterizations=selected_characterizations, config_characterizations=config_characterizations, **offline_phase_kwargs
+                        )
                     else:  # just dataset characterizations
-                        metalearner.offline_phase(mdbase=mdbase, dataset_characterizations=selected_characterizations)
-                else:  # compute characterizations in offline_phase for each dataset
-                    metalearner.offline_phase(mdbase=mdbase)
+                        metalearner.offline_phase(mdbase=mdbase, dataset_characterizations=selected_characterizations, **offline_phase_kwargs)
+                else:  # likely compute characterizations in offline_phase for each dataset
+                    metalearner.offline_phase(mdbase=mdbase, **offline_phase_kwargs)
+                if self._verbosity >= 2:
+                    print("Done with offline phase of dataset with id: {} at {}".format(did, str(datetime.now())))
 
                 # perform online phase
                 if self._test_size is None:
                     self._test_size = 0.2
                 X_train, X_test, y_train, y_test = train_test_split(df_X, df_y, test_size=self._test_size)
-                metalearner.online_phase(X_train, y_train, max_time=self._max_time, metric=self._metric, n_jobs=self._n_jobs, total_n_configs=self._n_configs)
+                metalearner.online_phase(
+                    X_train, y_train, max_time=self._max_time, metric=self._metric, n_jobs=self._n_jobs, total_n_configs=self._n_configs, **online_phase_kwargs
+                )
+                if self._verbosity >= 2:
+                    print("Done with online phase of dataset with id: {} at {}".format(did, str(datetime.now())))
 
                 if metalearner.get_number_of_configurations() == 0:  # nothing to add
                     evaluation_results.append((did, None))
@@ -138,44 +162,35 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                                         with time_limit(max_time):
                                             configuration.fit(X_train, y_train)  # error MemoryError, should catch that too
                                     except TimeoutException as e:
-                                        if self._verbosity == 1:
+                                        if self._verbosity >= 1:
                                             print("Evaluating configuration timed out with {} seconds".format(max_time))
                                         continue
                                 else:
                                     configuration.fit(X_train, y_train)
                             except ValueError as e:
-                                if self._verbosity == 1:
+                                if self._verbosity >= 1:
                                     print("The configuration could not be fitted, incompatible pipeline. Hence added as `None` to results of dataset {}".format(did))
                                     dataset_eval_results.append(None)
                                     continue
                             except MemoryError as m:
-                                if self._verbosity == 1:
+                                if self._verbosity >= 1:
                                     print("The configuration could not be fitted due to a memory error. Hence added as `None` to results of dataset {}".format(did))
                                     dataset_eval_results.append(None)
                                     continue
                             performance: float = -np.inf  # stores performance according to metric
                             # TODO implement more options
                             if self._metric == "neg_log_loss":
-                                y_pred = configuration.predict_proba(X_test)
+                                try:
+                                    y_pred = configuration.predict_proba(X_test)
+                                except AttributeError as e:  # can be the case when not training a classifier to predict probabilities
+                                    if self._verbosity >= 1:
+                                        print("Could not predict probability due to attribute error in pipeline")
                                 labels = np.unique(LabelEncoder().fit_transform(df_y))
                                 performance = float(-1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels))
                             dataset_eval_results.append(performance)
                     evaluation_results.append((did, dataset_eval_results))
 
-            # TODO: implement k-fold
-            # if k-fold cv:
-            # get relevant dataset_characterizations
-
-            # for each fold
-            # perform the offline phase on the subset of the mdbase
-
-            # perform the online phase on the subset of the mdbase within max_time
-
-            # get the top solution
-
-            # avg out the scores
-
-            if self._verbosity == 1:
+            if self._verbosity >= 1:
                 print("Done with dataset with id: {} at {}".format(did, str(datetime.now())))
             metalearner.clear_configurations()  # reset the metalearner's memory for next dataset
             mdbase.restore_view()
