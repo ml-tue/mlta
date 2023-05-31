@@ -47,6 +47,4 @@ class BaseConfigurationCharacterization:
             pipe = mdbase.get_sklearn_pipeline(pipeline_id=pipe_id, is_classification=True)
             config_characterizations.append((pipe_id, self.compute(pipe)))
             del pipe
-            if pipe_id % 1000 == 0:
-                print(f"Reached pipe {pipe_id}")
         return config_characterizations
