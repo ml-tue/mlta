@@ -104,14 +104,25 @@ class TopXGBoostRanked(BaseCharacterizationLearner):
         dataset_characterizations = mdbase.get_dataset_characterizations(self._dataset_characterizations_name, dataset_ids)
         config_characterizations = mdbase.get_configuration_characterizations(self._configuration_characterizations_name, pipe_ids)
 
+        # # get the datatypes for X, because config_char could be str too which xgboost must get as category
+        self._dtypes = {}
+        indx_counter = 0
+        for i in range(0, len(dataset_characterizations[0][1])):
+            self._dtypes[indx_counter] = "float"
+            indx_counter += 1
+        for val in enumerate(config_characterizations[0][1]):
+            if isinstance(val[1], str):
+                self._dtypes[indx_counter] = "category"
+            else:
+                self._dtypes[indx_counter] = "float"
+            indx_counter += 1
+
         # finalize the input for fitting the model
         for d_char, p_char in zip(dataset_characterizations, config_characterizations):
-            self._X.append([*d_char[1], *p_char[1]])
-        self._X = np.asarray(self._X)
-        self._y = np.asarray(self._y)
-        self._qid = np.asarray(self._qid)
+            self._X.append((*d_char[1], *p_char[1]))
+        self._X = pd.DataFrame(self._X).astype(self._dtypes)
 
-        self._ranker = XGBRanker(objective="rank:pairwise", n_estimators=150, learning_rate=0.1, max_depth=8, kwargs=kwargs)
+        self._ranker = XGBRanker(objective="rank:pairwise", n_estimators=150, learning_rate=0.1, max_depth=8, tree_method="approx", enable_categorical=True, kwargs=kwargs)
         self._ranker.fit(X=self._X, y=self._y, qid=self._qid)
 
     def online_phase(
@@ -180,7 +191,8 @@ class TopXGBoostRanked(BaseCharacterizationLearner):
                 pipe_chars = self._mdbase.get_configuration_characterizations(self._configuration_characterizations_name, pipe_ids)
                 X_to_rank_ = []
                 for pipe_char in pipe_chars:
-                    X_to_rank_.append([*dataset_characterization, *pipe_char[1]])
+                    X_to_rank_.append((*dataset_characterization, *pipe_char[1]))
+                X_to_rank_ = pd.DataFrame(X_to_rank_).astype(self._dtypes)
                 ranking_scores = self._ranker.predict(X_to_rank_)
                 sorted_ranking_scores = sorted(ranking_scores, reverse=True)
                 ranks = [sorted_ranking_scores.index(x) for x in ranking_scores]
