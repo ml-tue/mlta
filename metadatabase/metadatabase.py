@@ -684,7 +684,7 @@ class MetaDataBase:
 
         Arguments
         ---------
-        characterizations: List[Tuple[int, List[int | float], List[str]]]
+        characterizations: List[Tuple[int, Tuple[List[int | float], List[str]]]]
             A list of tuples, where each tuple represents a dataset characterization.
             The first element in the tuple refers to the dataset_id in `mdbase`,
             The second element is the purely numeric vector representing the dataset,
@@ -746,7 +746,9 @@ class MetaDataBase:
             stored_characterizations.append((char_name, stored_ids))
         return stored_characterizations
 
-    def get_dataset_characterizations(self, characterization_name: str = None, dataset_ids: Optional[List[int]] = None) -> List[Tuple[str, List[int]]]:
+    def get_dataset_characterizations(
+        self, characterization_name: str = None, dataset_ids: Optional[List[int]] = None, include_dimension_names: bool = False
+    ) -> List[Tuple[str, List[int | float]]] | List[Tuple[str, List[int | float], List[str]]]:
         """Returns stored characterizations, can filter on characterization_name and dataset_ids.
 
         Arguments
@@ -755,13 +757,22 @@ class MetaDataBase:
             Name of characterization method for which to get the characterizations (as stored using `name` in `add_dataset_characterizations`).
         dataset_ids: Optional[List[int]],
             optional list of dataset_ids to filter on.
+        include_dimension_names: bool,
+            whether or not to also return the names of the dimensions of the characterizations, default is False
 
         Returns
         -------
-        metadatabase_characterizations: List[Tuple[int, List[int | float]]],
-            A list of tuples, where each tuple represents a dataset characterization.
-            The first element in the tuple refers to the dataset_id in `mdbase`,
-            The second element is the purely numeric vector representing the dataset,
+        if `include_dimension_names` is True:
+            metadatabase_characterizations: List[Tuple[int, List[int | float]]],
+                A list of tuples, where each tuple represents a dataset characterization.
+                The first element in the tuple refers to the dataset_id in `mdbase`,
+                The second element is the purely numeric vector representing the dataset,
+        if `include_dimension_names` is False:
+            metadatabase_characterizations: List[Tuple[str, List[int | float], List[str]]],
+                A list of tuples, where each tuple represents a dataset characterization.
+                The first element in the tuple refers to the dataset_id in `mdbase`,
+                The second element is the purely numeric vector representing the dataset,
+                The last element is the list denoting the dimension names that are additionally requested.
         """
         # check whether characterization filter is valid
         available_characterizations = []
@@ -782,13 +793,19 @@ class MetaDataBase:
         else:
             dataset_ids = [int(val) for val in char_df["dataset_id"].to_list()]
 
+        if include_dimension_names:
+            dimensions_names = char_df.columns[1:].to_list()
+
         # get characterizations in proper format
         characterizations = []
         for id in dataset_ids:
             if id not in [int(val) for val in list(char_df["dataset_id"].values)]:  # dataset id to select not in characterization
                 raise ValueError("Cannot include dataset with id: {} for characterization: {}. It does not exist in the metadatabase.".format(id, characterization_name))
             char_values = list(float(val) for val in char_df[char_df["dataset_id"] == id].values[0])[1:]
-            characterizations.append((id, char_values))
+            if not include_dimension_names:
+                characterizations.append((id, char_values))
+            else:
+                characterizations.append((id, char_values, dimensions_names))
 
         return characterizations
 
