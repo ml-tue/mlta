@@ -48,6 +48,8 @@ class PortfolioBuilding(BaseAgnosticLearner):
         else:
             self._results_matrix = results_matrix
 
+        return  ## TODO REMOVE THIS LATER ON
+
         results_pipe_ids = [int(pipe_id) for pipe_id in self._results_matrix[0][2]]
         did_to_performances = {}
         for result_entry in self._results_matrix:
@@ -199,7 +201,7 @@ class PortfolioBuilding(BaseAgnosticLearner):
                 if raw_perf is None:
                     pipe_performances.append(1)
                 else:
-                    avg_dist_to_min = abs(min_score - raw_perf) / abs(min_score - max_score)
+                    avg_dist_to_min = abs(max_score - raw_perf) / abs(min_score - max_score)  # the naming is confusing, because its not to minimum but the best score
                     pipe_performances.append(avg_dist_to_min)
             results_matrix.append((did, (pipe_performances, [str(pipe_id) for pipe_id in pipe_ids])))
             if self._versbosity >= 1:
