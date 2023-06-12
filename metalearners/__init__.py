@@ -4,3 +4,4 @@ from metalearners.base_similarity_learner import BaseSimilarityLearner
 from metalearners.portfolio_building import PortfolioBuilding
 from metalearners.top_similarity_learner import TopSimilarityLearner
 from metalearners.top_xgboost_ranked import TopXGBoostRanked
+from metalearners.utility_estimate_learner import UtilityEstimateLearner
