@@ -9,7 +9,7 @@ from sklearn.model_selection import cross_val_score
 from metadatabase import MetaDataBase
 from metalearners.base_agnostic_learner import BaseAgnosticLearner
 from metalearners.base_learner import BaseLearner
-from utilities import TimeoutException, time_limit
+from utilities import TimeoutException, get_fixed_preprocessed_data, sklearn_pipe_to_individual_str, time_limit
 
 
 class PortfolioBuilding(BaseAgnosticLearner):
@@ -25,7 +25,7 @@ class PortfolioBuilding(BaseAgnosticLearner):
             If smaller no progress is shown.
         """
         super().__init__()
-        self._versbosity = verbosity
+        self._verbosity = verbosity
 
     def offline_phase(self, mdbase: MetaDataBase, portfolio_size: int = 25, results_matrix: Optional[List[Tuple[int, List[int | float], List[str]]]] = None) -> None:
         """Performs offline computation (e.g. portfolio construction) using the specified metadatabase.
@@ -41,6 +41,7 @@ class PortfolioBuilding(BaseAgnosticLearner):
             Shaped to be consistent with dataset_characterizations such that mdbase functionality can be used for it.
             Each tuple in the list stores a tuple of the dataset_id, the pipe performances on it as a list, and the pipeline ids as a list of strings.
             It thus requires the column/featurenames in using the dataset characterization functionality in mdbase.
+            The portfolio is built on this results matrix, it functions without results for all dataset in the mdbase.
         """
         self._mdbase = mdbase
         if results_matrix is None:
@@ -48,13 +49,12 @@ class PortfolioBuilding(BaseAgnosticLearner):
         else:
             self._results_matrix = results_matrix
 
-        return  ## TODO REMOVE THIS LATER ON
-
         results_pipe_ids = [int(pipe_id) for pipe_id in self._results_matrix[0][2]]
+        dataset_ids = []  # only consider those in the results_matrix to build the portfolio.
         did_to_performances = {}
         for result_entry in self._results_matrix:
             did_to_performances[result_entry[0]] = result_entry[1]
-        dataset_ids = self._mdbase.list_datasets(by="id")
+            dataset_ids.append(result_entry[0])
 
         if portfolio_size > len(results_pipe_ids):
             raise ValueError(f"Cannot build a portfolio of portfolio size: {portfolio_size}, it is larger than the number of candidate pipelines: {len(results_pipe_ids)}.")
@@ -86,7 +86,7 @@ class PortfolioBuilding(BaseAgnosticLearner):
             candidate_pipe_ids.remove(best_pipe)
             dataset_to_best_score = best_dataset_to_best_score
 
-            if self._versbosity >= 1:
+            if self._verbosity >= 1:
                 print(f"reached a portfolio size of {len(self._portfolio_ids)}")
 
     def online_phase(
@@ -139,9 +139,9 @@ class PortfolioBuilding(BaseAgnosticLearner):
             if self._verbosity >= 1:
                 print("online_phase timed out with {} seconds".format(max_time))
 
-    def compute_results_matrix(self, n_pipes: int = 1, metric: str = "neg_log_loss", n_folds: int = 5, eval_max_time: Optional[int] = 600):
+    def compute_results_matrix(self, n_pipes: int = 1, metric: str = "neg_log_loss", n_folds: int = 3, eval_max_time: Optional[int] = 300, dataset_ids: Optional[List[int]] = None):
         """Computes the results matrix, recording the performance for the best `n_pipes` per dataset w.r.t `metric` on all other datasets in the mdbase.
-        Be aware running this takes a long time, see `max_time` parameter for more details.
+        Be aware running this takes a long time, see `eval_max_time` parameter for more details.
 
         Arguments
         ---------
@@ -152,10 +152,13 @@ class PortfolioBuilding(BaseAgnosticLearner):
         n_folds: integer,
             the amount of folds used in the cross-validation to score the pipeline on a dataset.
             Automatically assigns the same number of jobs to it. Thus assumes a sufficiently powerful machine.
-        max_time: integer or None,
+        eval_max_time: integer or None,
             Optional argument to specify the maximum time (in seconds) 1 cross-validation procedure can take (for 1 dataset and pipeline).
             Thus with a default of 600 seconds, creating a portfolio of size 25 could using OpenML18CC (n=72) could still take
                 72^2*10 minutes = 36 days, in other words, be mindful of running this function.
+        dataset_ids: optional list of ints,
+            optional list of integers representing dataset ids as in the mdbase, if not specified results are computed for all datasets in mdbase.
+            This selection does not include the selection of the candidate pipelines, only which results are generated (e.g. to do batch runs.)
 
         Returns
         -------
@@ -165,8 +168,9 @@ class PortfolioBuilding(BaseAgnosticLearner):
         """
         # get the pipeline id's, discard duplicate pipelines (datasets may have the same high-perfoming configurations)
         pipe_ids = []
-        dataset_ids = self._mdbase.list_datasets(by="id")
-        for did in dataset_ids:
+        if dataset_ids is None:
+            dataset_ids = self._mdbase.list_datasets(by="id")
+        for did in self._mdbase.list_datasets(by="id"):
             top_pipe_ids = self._mdbase.get_df(datasets=[did], top_solutions=(n_pipes, metric))["pipeline_id"].to_list()
             pipe_ids.extend(top_pipe_ids)
         pipe_ids = set(pipe_ids)  # only consider each pipeline once
@@ -178,19 +182,40 @@ class PortfolioBuilding(BaseAgnosticLearner):
             raw_pipe_performances = [None] * len(pipe_ids)  # set to None values in case fits fail
             for i, pipe_id in enumerate(pipe_ids):
                 pipe = self._mdbase.get_sklearn_pipeline(pipeline_id=pipe_id, X=X, y=y, is_classification=True, include_prepro=True)
+
+                # skip evaluations with pipelines having knn and polynomial features if data is too large
+                exclude_knn = False
+                exclude_polynomial_features = False
+                X_ = get_fixed_preprocessed_data(X)
+                if X_.shape[0] * X_.shape[1] > 6_000_000:
+                    exclude_knn = True
+                if X_.shape[1] > 50:
+                    exclude_polynomial_features = True
+                ind_str = sklearn_pipe_to_individual_str(pipe)
+                if exclude_knn and "KNeighborsClassifier" in ind_str:
+                    if self._verbosity >= 1:
+                        print(f"Skipped pipeline with id {pipe_id}, because it contains KNN and data is too large")
+                    continue  # can continue because default raw_pipe_performances set to None
+                if exclude_polynomial_features and "PolynomialFeatures" in ind_str:
+                    if self._verbosity >= 1:
+                        print(f"Skipped pipeline with id {pipe_id}, because it contains PolynomialFeatures and data is too large")
+                    continue
+                if self._verbosity >= 1:
+                    print(f"Start fitting pipeline with id:{pipe_id} at: {datetime.datetime.now()}")
                 try:
                     try:  #  nested try for time_limit if necessary
                         with time_limit(eval_max_time):
-                            score = float(np.mean(cross_val_score(pipe, X, y, cv=n_folds, scoring=metric, n_jobs=n_folds)))
+                            # limit cross_val_score to only 1 job, otherwise memory issues may occur and the timer does not work properly
+                            score = float(np.mean(cross_val_score(pipe, X, y, cv=n_folds, scoring=metric, n_jobs=1, pre_dispatch="1*n_jobs")))
                             raw_pipe_performances[i] = score
                     except TimeoutException as e:
                         if self._verbosity >= 1:
-                            print("Evaluating configuration timed out with {} seconds".format(max_time))
+                            print("Evaluating configuration timed out with {} seconds".format(eval_max_time))
                 except ValueError as e:
-                    if self._versbosity >= 1:
+                    if self._verbosity >= 1:
                         print("pipeline with id {} failed to fit, do not consider it".format(pipe_id))
                 except MemoryError as me:
-                    if self._versbosity >= 1:
+                    if self._verbosity >= 1:
                         print("The configuration could not be fitted due to a memory error. Hence added as `None` to results for dataset {}".format(did))
 
             # process results to get average distance to the minimum (w.r.t dataset), have the failed pipes (None's) set to 1
@@ -204,7 +229,8 @@ class PortfolioBuilding(BaseAgnosticLearner):
                     avg_dist_to_min = abs(max_score - raw_perf) / abs(min_score - max_score)  # the naming is confusing, because its not to minimum but the best score
                     pipe_performances.append(avg_dist_to_min)
             results_matrix.append((did, (pipe_performances, [str(pipe_id) for pipe_id in pipe_ids])))
-            if self._versbosity >= 1:
+            if self._verbosity >= 1:
                 print(f"Done with dataset with id:{did} at: {datetime.datetime.now()}")
+                print("results_matrix: ", results_matrix)
 
         return results_matrix
