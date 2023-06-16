@@ -76,7 +76,7 @@ class PortfolioBuilding(BaseAgnosticLearner):
                     pipe_score = did_to_performances[did][results_pipe_ids.index(pipe_id)]
                     pipe_dataset_to_best_score[did] = min(pipe_dataset_to_best_score[did], pipe_score)
                 pipe_generalization_err = sum(pipe_dataset_to_best_score.values())
-                if pipe_generalization_err < cur_generalization_err:
+                if pipe_generalization_err < best_generalization_err:
                     best_pipe = pipe_id
                     best_generalization_err = pipe_generalization_err
                     best_dataset_to_best_score = pipe_dataset_to_best_score
@@ -118,9 +118,12 @@ class PortfolioBuilding(BaseAgnosticLearner):
             (ordered high-to-low by estimated performance)
         """
 
+        if total_n_configs > len(self._portfolio_ids):
+            raise ValueError(f"total_n_configs: {total_n_configs} too large for portfolio of size: {len(self._portfolio_ids)}")
+
         try:
             with time_limit(max_time):
-                for pipe_id in self._portfolio_ids:
+                for pipe_id in list(self._portfolio_ids)[:total_n_configs]:
                     pipe = self._mdbase.get_sklearn_pipeline(pipe_id, X, y, True, True)
                     # Must expect not all pipelines may work, e.g. feature selectors may remove all features
                     # therefore try fitting pipe, if it does not work do not consider it, fill it in with while loop later
