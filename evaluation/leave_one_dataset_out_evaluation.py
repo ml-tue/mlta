@@ -3,6 +3,7 @@ from inspect import getfullargspec
 from typing import List, Optional, Tuple
 
 import numpy as np
+from numpy.linalg import LinAlgError
 from sklearn.metrics import log_loss
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -54,8 +55,8 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
         self,
         mdbase: MetaDataBase,
         metalearner: BaseLearner,
-        dataset_characterizations: Optional[List[Tuple[int, List[int | float]]]],
-        config_characterizations: Optional[List[Tuple[int, List[int | float]]]],
+        dataset_characterizations: Optional[List[Tuple[int, List[int | float]]]] = None,
+        config_characterizations: Optional[List[Tuple[int, List[int | float]]]] = None,
         dataset_ids: Optional[List[int]] = None,
         max_time: Optional[int] = None,
         **metalearner_kwargs,
@@ -170,13 +171,18 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                             except ValueError as e:
                                 if self._verbosity >= 1:
                                     print("The configuration could not be fitted, incompatible pipeline. Hence added as `None` to results of dataset {}".format(did))
-                                    dataset_eval_results.append(None)
-                                    continue
+                                dataset_eval_results.append(None)
+                                continue
                             except MemoryError as m:
                                 if self._verbosity >= 1:
                                     print("The configuration could not be fitted due to a memory error. Hence added as `None` to results of dataset {}".format(did))
-                                    dataset_eval_results.append(None)
-                                    continue
+                                dataset_eval_results.append(None)
+                                continue
+                            except LinAlgError as le:
+                                if self._verbosity >= 1:
+                                    print("The configuration could not be fitted due to LinAlgError. Hence added as `None` to results of dataset {}".format(did))
+                                dataset_eval_results.append(None)
+                                continue
                             performance: float = -np.inf  # stores performance according to metric
                             # TODO implement more options
                             if self._metric == "neg_log_loss":
@@ -185,6 +191,11 @@ class LeaveOneDatasetOutEvaluation(BaseEvaluation):
                                 except AttributeError as e:  # can be the case when not training a classifier to predict probabilities
                                     if self._verbosity >= 1:
                                         print("Could not predict probability due to attribute error in pipeline")
+                                except ValueError as ve:
+                                    if self._verbosity >= 1:
+                                        print("Could not predict probability due to ValuerError when applying the pipeline to the new test data{}".format(did))
+                                    dataset_eval_results.append(None)
+                                    continue
                                 labels = np.unique(LabelEncoder().fit_transform(df_y))
                                 performance = float(-1 * log_loss(y_true=LabelEncoder().fit_transform(y_test), y_pred=y_pred, labels=labels))
                             dataset_eval_results.append(performance)
