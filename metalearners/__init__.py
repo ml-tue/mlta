@@ -1,4 +1,4 @@
-from metalearners.average_rank_learner import AverageRankLearner
+from metalearners.average_regret_learner import AverageRegretLearner
 from metalearners.base_characterization_learner import BaseCharacterizationLearner
 from metalearners.base_learner import BaseLearner
 from metalearners.base_similarity_learner import BaseSimilarityLearner

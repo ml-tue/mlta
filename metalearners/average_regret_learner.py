@@ -9,10 +9,10 @@ from metalearners.base_agnostic_learner import BaseAgnosticLearner
 from utilities import TimeoutException, time_limit
 
 
-class AverageRankLearner(BaseAgnosticLearner):
+class AverageRegretLearner(BaseAgnosticLearner):
     def __init__(self, verbosity: int = 1):
-        """Initialize the dataset-agnostic average rank meta-learner. The method computes the average rank
-        for all pipelines in the metadataset, based on their normalized regret, in the offline phase, and ranks approaches accordingly.
+        """Initialize the dataset-agnostic average regret meta-learner. The method computes the average regret
+        for all pipelines in the metadataset in the offline phase, and ranks approaches accordingly.
         In the online phase the best-ranked pipelines, with at least a specified amount of evaluations can be recommended.
         It deos not tailor the online phase to the dataset at hand, making it a dataset-agnostic method.
 
