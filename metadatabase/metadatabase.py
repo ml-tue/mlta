@@ -550,7 +550,7 @@ class MetaDataBase:
         Arguments
         ---------
         datasets: List of integers,
-            ids of datasets that should be temporarily removed from the metadatabase views.
+            ids of datasets that should be present in partial metadatabase view.
         """
         self._set_partial_view_paths()
         if os.path.isdir(self._tmp_dir):
