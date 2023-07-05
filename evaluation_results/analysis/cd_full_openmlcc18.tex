@@ -1,0 +1,61 @@
+\begin{tikzpicture}[
+  treatment line/.style={rounded corners=1.5pt, line cap=round, shorten >=1pt},
+  treatment label/.style={font=\small},
+  group line/.style={ultra thick},
+]
+
+\begin{axis}[
+  clip={false},
+  axis x line={center},
+  axis y line={none},
+  axis line style={-},
+  xmin={1},
+  ymax={0},
+  scale only axis={true},
+  width={\axisdefaultwidth},
+  ticklabel style={anchor=south, yshift=1.3*\pgfkeysvalueof{/pgfplots/major tick length}, font=\small},
+  every tick/.style={draw=black},
+  major tick style={yshift=.5*\pgfkeysvalueof{/pgfplots/major tick length}},
+  minor tick style={yshift=.5*\pgfkeysvalueof{/pgfplots/minor tick length}},
+  title style={yshift=\baselineskip},
+  xmax={13},
+  ymin={-7.5},
+  height={8\baselineskip},
+  xtick={1,4,7,10,13},
+  minor x tick num={1},
+  x dir={reverse},
+  title={critdd},
+]
+
+\draw[treatment line] ([yshift=-2pt] axis cs:4.527777777777778, 0) |- (axis cs:3.4444444444444446, -2.5)
+  node[treatment label, anchor=west] {portfolio\_building};
+\draw[treatment line] ([yshift=-2pt] axis cs:4.979166666666667, 0) |- (axis cs:3.4444444444444446, -3.5)
+  node[treatment label, anchor=west] {AsyncEA};
+\draw[treatment line] ([yshift=-2pt] axis cs:5.847222222222222, 0) |- (axis cs:3.4444444444444446, -4.5)
+  node[treatment label, anchor=west] {AsynchronousSuccessiveHalving};
+\draw[treatment line] ([yshift=-2pt] axis cs:6.256944444444445, 0) |- (axis cs:3.4444444444444446, -5.5)
+  node[treatment label, anchor=west] {RandomSearch};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.020833333333333, 0) |- (axis cs:3.4444444444444446, -6.5)
+  node[treatment label, anchor=west] {xgboostranker\_ap\_feurer};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.347222222222222, 0) |- (axis cs:3.4444444444444446, -7.5)
+  node[treatment label, anchor=west] {average\_rank};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.430555555555555, 0) |- (axis cs:9.652777777777779, -8.0)
+  node[treatment label, anchor=east] {top\_similarity\_wistuba};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.666666666666667, 0) |- (axis cs:9.652777777777779, -7.0)
+  node[treatment label, anchor=east] {utility\_estimate\_wistuba};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.770833333333333, 0) |- (axis cs:9.652777777777779, -6.0)
+  node[treatment label, anchor=east] {top\_similarity\_feurer};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.784722222222222, 0) |- (axis cs:9.652777777777779, -5.0)
+  node[treatment label, anchor=east] {utility\_estimate\_feurer};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.854166666666667, 0) |- (axis cs:9.652777777777779, -4.0)
+  node[treatment label, anchor=east] {xgboostranker\_rankml\_feurer};
+\draw[treatment line] ([yshift=-2pt] axis cs:7.944444444444445, 0) |- (axis cs:9.652777777777779, -3.0)
+  node[treatment label, anchor=east] {xgboostranker\_rankml\_wistuba};
+\draw[treatment line] ([yshift=-2pt] axis cs:8.569444444444445, 0) |- (axis cs:9.652777777777779, -2.0)
+  node[treatment label, anchor=east] {xgboostranker\_ap\_wistuba};
+\draw[group line] (axis cs:4.979166666666667, -2.0) -- (axis cs:7.944444444444445, -2.0);
+\draw[group line] (axis cs:4.527777777777778, -1.6666666666666667) -- (axis cs:6.256944444444445, -1.6666666666666667);
+\draw[group line] (axis cs:7.020833333333333, -1.3333333333333333) -- (axis cs:8.569444444444445, -1.3333333333333333);
+
+\end{axis}
+\end{tikzpicture}

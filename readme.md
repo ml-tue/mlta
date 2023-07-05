@@ -34,10 +34,14 @@ You can extend the toolbox / include other methods by extending from a suitable 
 
 ## Thesis Results Reproducibility
 -----
-The processed thesis results are located in `../evaluations_results`. You can re-create these results by running the code in the following Jupyter Notebook `../evaluations_results/reproduce_results.ipynb`. To run that code it is important to do the following:
+The processed thesis results are located in the `evaluations_results` directory. You can re-create these results by running the code in the `reproduce_results.ipynb` Jupyter Notebook. To run that code it is important to do the following:
 - include the aformentioned metadatabase in the same directory as the notebook
 - to run it using an environment that confirms to `requirements.txt`
 - include a version (e.g. in a local directory) of GAMA that supports warm-starting via individual strings, for instance [this branch](https://github.com/openml-labs/gama/tree/fix_warm_start).
+
+After reproducing these results, or by using the already present results, you can re-create the statistical tests, figures, tables, and run time analysis using the `evaluation_results/analysis/analyze_results.ipynb` Notebook. If you were to recreate the full results from scratch (the above steps) then please format the results you get therefrom as the files in the directory, e.g. combining all single meta-learning results files in a full file. To run these analysis you need to do the following:
+- to run it using an environment that confirms to `requirements.txt` 
+- include a local copy of the [critdd package](https://github.com/mirkobunse/critdd) in the `evaluation_results/analysis` directory. This package is used to create the CD-diagrams.
 
 ## Code Examples
 -----
