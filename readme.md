@@ -43,6 +43,8 @@ After reproducing these results, or by using the already present results, you ca
 - to run it using an environment that confirms to `requirements.txt` 
 - include a local copy of the [critdd package](https://github.com/mirkobunse/critdd) in the `evaluation_results/analysis` directory. This package is used to create the CD-diagrams.
 
+If you fail to reproduce any of the results please open a Github issue, if this is left unresponded you can contact me via ljpcvg@gmail.com
+
 ## Code Examples
 -----
 ### Example 1
