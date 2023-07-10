@@ -1,4 +1,4 @@
-# Meta-Learning Toolbox for AutoML (MLTA) 
+# Meta-Learning Toolbox for AutoML (MLTA) ![toolbox](docs/mlta-logo-name.jpg)
 -----
 Meta-learning toolbox created for Master's Thesis Data Science & AI @ TU/e. More information concerning the creation, goal and usage of the toolbox is present in the thesis (see `../docs/MLTA_Master_Thesis`) -- which also includes code examples. You can access the associated metadatabase storing the metadataset, datasets, logs and characterizations [here](https://drive.google.com/file/d/135SYH96k2G24AieWdRFWf4FXVmuSq_J9/view?usp=sharing).
 
