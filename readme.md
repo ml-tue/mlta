@@ -9,7 +9,7 @@ The meta-learning toolbox adopts a framework consisting of the following compone
 measures, configuration characterization methods, evaluation methods and a metadatabase.
 The framework is depicted in the figure below, detailing the interactions between components.
 
-![Framework](docs/mlta_framework.jpg "Title")
+![Framework](docs/mlta_framework.png "Title")
 
 ## Tools
 ------
